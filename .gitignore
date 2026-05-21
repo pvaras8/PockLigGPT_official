@@ -68,6 +68,9 @@ cache/
 *.pdbqt
 *.dlg
 
+# Permite versionar receptores de ejemplo en pdbs/
+!pdbs/*.pdbqt
+
 # OJO:
 # normalmente NO ignores todos los .pdb
 # porque algunos receptores/ejemplos pequeños sí pueden interesar.
@@ -121,6 +124,9 @@ build/
 dist/
 *.egg-info/
 .eggs/
+
+# Permite versionar artefactos del tokenizador
+!datasets/tokenizer/*.pkl
 
 # =========================
 # Tests / coverage

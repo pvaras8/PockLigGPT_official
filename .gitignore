@@ -60,6 +60,9 @@ cache/
 *.npz
 *.npy
 
+# Permite versionar dataset base de Zink250k
+!datasets/raw/zinc250k/*.csv
+
 # =========================
 # Química computacional / docking
 # =========================

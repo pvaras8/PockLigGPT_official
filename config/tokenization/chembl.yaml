@@ -1,8 +1,8 @@
 dataset:
   type: chembl
   files:
-    - /LUSTRE/users/pvaras/sequence_gpt/data/very_big_molecules_selfies_2/chembl/chembl1_filtered.csv
-    - /LUSTRE/users/pvaras/sequence_gpt/data/very_big_molecules_selfies_2/chembl/chembl2_filtered.csv
+    - datasets/raw/chembl/chembl1_filtered.csv
+    - datasets/raw/chembl/chembl2_filtered.csv
 
 tokenizer:
   type: selfies

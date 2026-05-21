@@ -1,6 +1,6 @@
 dataset:
   type: crossdocked
-  file: /LUSTRE/users/pvaras/sequence_gpt/data/very_big_molecules_selfies_2/cross_docked_jblasser/crossdocked_filtered_with_pocket_smiles.csv
+  file: datasets/raw/crossdocked/crossdocked_filtered_with_pocket_smiles.csv
 
 tokenizer:
   type: pocket_ligand

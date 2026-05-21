@@ -4,7 +4,7 @@
 model:
   type: "sequence_add"
   module: "pockliggpt.models.model_sequence"
-  checkpoint_path: "out-models/ckpt_zink_chembl_sequence_add.pt"
+  checkpoint_path: "checkpoints/ckpt_zink_chembl_sequence_add.pt"
 
 # =========================
 # DATA
@@ -91,6 +91,6 @@ system:
 # OUTPUT
 # =========================
 output:
-  ppo_ckpt_path: "out-models/ckpt_zink_chembl_sequence_add_buche.pt"
+  ppo_ckpt_path: "checkpoints/ckpt_zink_chembl_sequence_add_buche.pt"
   loss_history_file: "loss_history_M.txt"
   save_trajectories: true

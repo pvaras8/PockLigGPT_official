@@ -12,17 +12,17 @@ model:
 
 data:
   loader_type: sequence_add
-  dataset: very_big_molecules_selfies_2/cross_docked_jblasser
+  dataset: datasets/processed/crossdocked
   block_size: 156
   batch_size: 16
-  meta_path: data/very_big_molecules_selfies_2/cross_docked_jblasser/meta_chembl_db_aa_2_proto4.pkl
-  parquet_path: data/very_big_molecules_selfies_2/cross_docked_jblasser/crossdocked_clean_pocket_selfies_with_tokens.parquet
-  pocket_npz_path: data/very_big_molecules_selfies_2/cross_docked_jblasser/per_residue_pack.npz
+  meta_path: datasets/tokenizer/meta_chembl_db_aa_2_proto4.pkl
+  parquet_path: datasets/processed/crossdocked/crossdocked_clean_pocket_selfies_with_tokens.parquet
+  pocket_npz_path: datasets/processed/crossdocked/per_residue_pack.npz
   pad_token_id: 0
 
 training:
   init_from: resume
-  init_ckpt_path: out-models/ckpt_zink_chembl.pt
+  init_ckpt_path: checkpoints/ckpt_zink_chembl.pt
   target_tokens: 524288
   num_gpus: 4
   learning_rate: 5.0e-6
@@ -43,7 +43,7 @@ eval:
   always_save_checkpoint: false
 
 logging:
-  out_dir: out-models
+  out_dir: checkpoints
   checkpoint_name: ckpt_zink_chembl_sequence_add.pt
   log_interval: 20
 

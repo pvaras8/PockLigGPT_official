@@ -12,17 +12,17 @@ model:
 
 data:
   loader_type: sequence
-  dataset: very_big_molecules_selfies_2/chembl
+  dataset: datasets/processed/chembl
   block_size: 156
   batch_size: 16
-  meta_path: data/very_big_molecules_selfies_2/chembl/meta_chembl_db_aa_2_proto4.pkl
-  train_bin: data/very_big_molecules_selfies_2/chembl/train_1_ghs.bin
-  val_bin: data/very_big_molecules_selfies_2/chembl/val_1_ghs.bin
+  meta_path: datasets/tokenizer/meta_chembl_db_aa_2_proto4.pkl
+  train_bin: datasets/processed/chembl/train_chembl.bin
+  val_bin: datasets/processed/chembl/val_chembl.bin
   pad_token_id: 0
 
 training:
   init_from: resume
-  init_ckpt_path: out-very-big-molecules-selfies-2/ckpt_zink_M.pt
+  init_ckpt_path: checkpoints/ckpt_zink_M.pt
   target_tokens: 524288
   num_gpus: 4
   learning_rate: 5.0e-6
@@ -43,7 +43,7 @@ eval:
   always_save_checkpoint: false
 
 logging:
-  out_dir: out-models
+  out_dir: checkpoints
   checkpoint_name: ckpt_zink_chembl.pt
   log_interval: 20
 

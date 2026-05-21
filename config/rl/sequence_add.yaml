@@ -57,7 +57,7 @@ prompt:
 # =========================
 conditioning:
   pocket_str_path: "conditioning/pocket_str.txt"
-  pocket_emb_path: "conditioning/pocket_emb.npy"
+  pocket_emb_path: "conditioning/6eif_pocket_prott5_embeddings.npy"
   pocket_emb_mode: "addition"
   pocket_emb_aa_start: 2
 

@@ -1,13 +1,15 @@
 import json
 import os
 import sys
+import contextlib
 from multiprocessing import cpu_count, get_context
 from typing import List, Tuple
-import signal
 
 import pandas as pd
 from rdkit import Chem
+from rdkit import RDLogger
 from rdkit.Chem import AllChem
+from rdkit.Chem import Descriptors
 from meeko import MoleculePreparation, PDBQTWriterLegacy
 from vina import Vina
 
@@ -99,30 +101,40 @@ def mol_to_pdbqt_string(mol) -> str:
 WORKER_STATE = {}
 
 
-def _alarm_handler(signum, frame):
-    raise TimeoutError("Vina docking timeout")
+def _resolve_worker_count(num_processors: int) -> int:
+    if num_processors == -1:
+        return max(1, cpu_count() - 1)
+    return max(1, num_processors)
+
+
+def _resolve_safe_parallelism(num_processors: int, vina_cpu_per_job: int) -> int:
+    requested_workers = _resolve_worker_count(num_processors)
+    cpus_per_job = max(1, int(vina_cpu_per_job))
+    available = max(1, cpu_count())
+    max_workers_by_cpu = max(1, available // cpus_per_job)
+    return max(1, min(requested_workers, max_workers_by_cpu))
+
+
+@contextlib.contextmanager
+def suppress_stdout_stderr():
+    """Silence C/C++-level noisy output from Vina/RDKit during heavy worker steps."""
+    with open(os.devnull, "w") as devnull:
+        old_stdout_fd = os.dup(1)
+        old_stderr_fd = os.dup(2)
+        try:
+            os.dup2(devnull.fileno(), 1)
+            os.dup2(devnull.fileno(), 2)
+            yield
+        finally:
+            os.dup2(old_stdout_fd, 1)
+            os.dup2(old_stderr_fd, 2)
+            os.close(old_stdout_fd)
+            os.close(old_stderr_fd)
 
 
 def init_worker(cfg: dict):
     global WORKER_STATE
-
-    v = Vina(sf_name=cfg["sf_name"], cpu=cfg["vina_cpu_per_job"])
-    v.set_receptor(cfg["filename_of_receptor"])
-    v.compute_vina_maps(center=cfg["center"], box_size=cfg["box_size"])
-
-    WORKER_STATE = {
-        "vina": v,
-        "exhaustiveness": cfg["exhaustiveness"],
-        "n_poses": cfg["n_poses"],
-        "write_n_poses": cfg["write_n_poses"],
-        "energy_range": cfg["energy_range"],
-        "fallback_score": cfg["fallback_score"],
-        "timeout_seconds": cfg["timeout_seconds"],
-        "embed_seed": cfg["embed_seed"],
-        "vina_seed": cfg["vina_seed"],
-        "ligands_folder": cfg["ligands_folder"],
-        "poses_folder": cfg["poses_folder"],
-    }
+    WORKER_STATE = cfg
 
 
 def worker(task: Tuple[int, str]):
@@ -137,21 +149,19 @@ def worker(task: Tuple[int, str]):
         with open(ligand_pdbqt_path, "w") as f:
             f.write(ligand_pdbqt)
 
-        v = WORKER_STATE["vina"]
-        v.set_ligand_from_string(ligand_pdbqt)
-        timeout_seconds = int(WORKER_STATE["timeout_seconds"])
-        if timeout_seconds > 0:
-            old_handler = signal.signal(signal.SIGALRM, _alarm_handler)
-            signal.alarm(timeout_seconds)
-            try:
-                v.dock(
-                    exhaustiveness=WORKER_STATE["exhaustiveness"],
-                    n_poses=WORKER_STATE["n_poses"],
-                )
-            finally:
-                signal.alarm(0)
-                signal.signal(signal.SIGALRM, old_handler)
-        else:
+        with suppress_stdout_stderr():
+            v = Vina(
+                sf_name=WORKER_STATE["sf_name"],
+                cpu=int(WORKER_STATE["vina_cpu_per_job"]),
+                seed=int(WORKER_STATE["vina_seed"]) + idx,
+                verbosity=0,
+            )
+            v.set_receptor(WORKER_STATE["filename_of_receptor"])
+            v.compute_vina_maps(
+                center=WORKER_STATE["center"],
+                box_size=WORKER_STATE["box_size"],
+            )
+            v.set_ligand_from_string(ligand_pdbqt)
             v.dock(
                 exhaustiveness=WORKER_STATE["exhaustiveness"],
                 n_poses=WORKER_STATE["n_poses"],
@@ -182,7 +192,7 @@ def worker(task: Tuple[int, str]):
             "Vina_pose_pdbqt": pose_pdbqt_path,
         }
 
-    except Exception:
+    except Exception as exc:
         return idx, {
             "ID": str(idx + 1),
             "SMILES": smiles,
@@ -190,6 +200,7 @@ def worker(task: Tuple[int, str]):
             "Vina_status": "ERROR",
             "Vina_ligand_pdbqt": ligand_pdbqt_path,
             "Vina_pose_pdbqt": pose_pdbqt_path,
+            "Vina_error": str(exc),
         }
 
 
@@ -198,6 +209,10 @@ def worker(task: Tuple[int, str]):
 # ============================================================
 
 def main():
+    # Hide noisy RDKit messages (e.g., UFFTYPER warnings) during massive docking batches.
+    RDLogger.DisableLog("rdApp.error")
+    RDLogger.DisableLog("rdApp.warning")
+
     if len(sys.argv) != 4:
         raise SystemExit(
             "Uso: python reward_vina.py <source_compound_file> <vars.json> <epoch>"
@@ -208,6 +223,7 @@ def main():
     epoch = str(sys.argv[3])
 
     cfg = load_config(vars_json)
+    verbose = bool(cfg.get("verbose", False))
 
     if not os.path.exists(source_compound_file):
         raise FileNotFoundError(f"No se encontró el archivo de SMILES: {source_compound_file}")
@@ -235,13 +251,10 @@ def main():
         float(cfg["size_z"]),
     ]
 
-    n_workers = int(cfg.get("num_processors", max(1, cpu_count() - 1)))
-    if n_workers == -1:
-        n_workers = max(1, cpu_count() - 1)
-    n_workers = max(1, n_workers)
-
     vina_cpu_per_job = int(cfg.get("vina_cpu_per_job", 1))
     vina_cpu_per_job = max(1, vina_cpu_per_job)
+    n_workers = _resolve_safe_parallelism(int(cfg.get("num_processors", -1)), vina_cpu_per_job)
+    max_mw = float(cfg.get("max_mw", 500.0))
 
     final_folder = os.path.abspath(cfg["final_folder"])
     os.makedirs(final_folder, exist_ok=True)
@@ -265,7 +278,6 @@ def main():
         "energy_range": float(cfg.get("energy_range", 3.0)),
         "vina_cpu_per_job": vina_cpu_per_job,
         "fallback_score": float(cfg.get("fallback_score", -6.0)),
-        "timeout_seconds": int(cfg.get("timeout_seconds", 0)),
         "sf_name": str(cfg.get("sf_name", "vina")),
         "embed_seed": int(cfg.get("embed_seed", 42)),
         "vina_seed": int(cfg.get("vina_seed", 12345)),
@@ -273,34 +285,63 @@ def main():
         "ligands_folder": ligands_folder,
     }
 
-    tasks = list(enumerate(smiles_list))
+    tasks = []
+    results = [None] * len(smiles_list)
+    fallback_score = float(cfg.get("fallback_score", -6.0))
 
-    print("---------- 1. Prediccion Docking ----------")
-    print(f"Moléculas: {len(smiles_list)}")
-    print(f"Workers: {n_workers}")
-    print(f"Vina CPU/job: {vina_cpu_per_job}")
-    print(f"Receptor: {receptor_pdbqt}")
-    print(f"Centro: {center}")
-    print(f"Box: {box_size}")
+    for idx, smiles in enumerate(smiles_list):
+        mol_id = f"mol_{idx + 1:06d}"
+        ligand_pdbqt_path = os.path.join(ligands_folder, f"{mol_id}_input.pdbqt")
+        pose_pdbqt_path = os.path.join(poses_folder, f"{mol_id}_out.pdbqt")
 
-    results = [None] * len(tasks)
+        try:
+            mol = Chem.MolFromSmiles(smiles)
+            mw = float(Descriptors.MolWt(mol)) if mol is not None else None
+        except Exception:
+            mw = None
 
-    ctx = get_context("spawn")
-    with ctx.Pool(
-        processes=n_workers,
-        initializer=init_worker,
-        initargs=(worker_cfg,),
-    ) as pool:
-        done = 0
-        for idx, res in pool.imap_unordered(worker, tasks):
-            results[idx] = res
-            done += 1
-            print(f"[{done}/{len(tasks)}] OK")
+        if mw is not None and mw > max_mw:
+            results[idx] = {
+                "ID": str(idx + 1),
+                "SMILES": smiles,
+                "Docking": fallback_score,
+                "Vina_status": "FILTERED_MW",
+                "Vina_ligand_pdbqt": ligand_pdbqt_path,
+                "Vina_pose_pdbqt": pose_pdbqt_path,
+                "MW": mw,
+            }
+            continue
+
+        tasks.append((idx, smiles))
+
+    if verbose:
+        print("---------- 1. Prediccion Docking ----------")
+        print(f"Moléculas: {len(smiles_list)}")
+        print(f"Workers: {n_workers}")
+        print(f"Vina CPU/job: {vina_cpu_per_job}")
+        print(f"Receptor: {receptor_pdbqt}")
+        print(f"Centro: {center}")
+        print(f"Box: {box_size}")
+
+    if len(tasks) > 0:
+        ctx = get_context("spawn")
+        with ctx.Pool(
+            processes=n_workers,
+            initializer=init_worker,
+            initargs=(worker_cfg,),
+        ) as pool:
+            done = 0
+            for idx, res in pool.imap_unordered(worker, tasks):
+                results[idx] = res
+                done += 1
+                if verbose:
+                    print(f"[{done}/{len(tasks)}] OK")
 
     df = pd.DataFrame(results)
     df.to_csv(output_csv_path, index=False)
 
-    print(f"Resultados guardados en: {output_csv_path}")
+    if verbose:
+        print(f"Resultados guardados en: {output_csv_path}")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 # scripts/train_ppo.py
 import argparse
+from datetime import datetime
 import json
 import os
 import sys
@@ -136,6 +137,62 @@ def _apply_cli_docking_overrides(cfg, args: argparse.Namespace) -> None:
     print(f"- center: {center_x}, {center_y}, {center_z}")
 
 
+def _build_experiment_layout(cfg) -> None:
+    reward_cfg = _ensure_section(cfg, "reward")
+    docking_cfg = _ensure_section(reward_cfg, "docking")
+
+    vars_file = docking_cfg.get("vars_file", DEFAULT_DOCKING_VARS_FILE)
+    vars_path = os.path.abspath(str(vars_file))
+    if not os.path.exists(vars_path):
+        raise FileNotFoundError(f"No existe vars_file de docking: {vars_path}")
+
+    with open(vars_path, "r", encoding="utf-8") as handle:
+        vars_cfg = json.load(handle)
+
+    receptor_path = os.path.abspath(str(vars_cfg.get("filename_of_receptor", "")))
+    receptor_name = os.path.splitext(os.path.basename(receptor_path))[0] or "unknown_receptor"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    run_dir = os.path.abspath(os.path.join("experiments", "rl", receptor_name, timestamp))
+    ckpt_dir = os.path.join(run_dir, "checkpoints")
+    logs_dir = os.path.join(run_dir, "logs")
+    reward_dir = os.path.join(run_dir, "reward")
+    docking_dir = os.path.join(run_dir, "docking")
+    trajectories_dir = os.path.join(run_dir, "trajectories")
+
+    os.makedirs(ckpt_dir, exist_ok=True)
+    os.makedirs(logs_dir, exist_ok=True)
+    os.makedirs(reward_dir, exist_ok=True)
+    os.makedirs(docking_dir, exist_ok=True)
+    os.makedirs(trajectories_dir, exist_ok=True)
+
+    output_cfg = _ensure_section(cfg, "output")
+    default_ckpt_name = os.path.basename(str(output_cfg.get("ppo_ckpt_path", "ppo_best.pt")))
+    default_loss_name = os.path.basename(
+        str(output_cfg.get("loss_history_file", "loss_history.txt"))
+    )
+
+    output_cfg["ppo_ckpt_path"] = os.path.join(ckpt_dir, default_ckpt_name)
+    output_cfg["loss_history_file"] = os.path.join(logs_dir, default_loss_name)
+    output_cfg["trajectories_dir"] = trajectories_dir
+
+    reward_cfg["results_output_prefix"] = os.path.join(reward_dir, "reward_results")
+    docking_cfg["smiles_output_file"] = os.path.join(run_dir, "smiles_input.smi")
+
+    vars_cfg["final_folder"] = docking_dir
+    with open(vars_path, "w", encoding="utf-8") as handle:
+        json.dump(vars_cfg, handle, indent=2)
+        handle.write("\n")
+
+    print("Experimento RL organizado en:")
+    print(f"- run_dir: {run_dir}")
+    print(f"- checkpoint: {output_cfg['ppo_ckpt_path']}")
+    print(f"- loss_history: {output_cfg['loss_history_file']}")
+    print(f"- trajectories: {output_cfg['trajectories_dir']}")
+    print(f"- reward_prefix: {reward_cfg['results_output_prefix']}")
+    print(f"- docking_final_folder: {docking_dir}")
+
+
 def _has_any_conditioning_input(cfg) -> bool:
     conditioning = cfg.get("conditioning", {})
     has_text = _is_nonempty_text(conditioning.get("pocket_str", "")) or _is_nonempty_text(
@@ -181,6 +238,7 @@ def main() -> None:
 
     _apply_cli_conditioning_overrides(cfg, args)
     _apply_cli_docking_overrides(cfg, args)
+    _build_experiment_layout(cfg)
     _handle_missing_conditioning(cfg, no_prompt=args.no_prompt)
 
     adapter = build_model_adapter(cfg)

@@ -4,7 +4,7 @@
 model:
   type: "sequence_add"
   module: "pockliggpt.models.model_sequence"
-  checkpoint_path: "checkpoints/ckpt_zink_chembl_sequence_add.pt"
+  checkpoint_path: "checkpoints/ckpt_zink_chembl_cross_sequence_add.pt"
 
 # =========================
 # DATA

@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 
 import pandas as pd
@@ -86,6 +87,9 @@ class RewardRunner:
 
     def _save_epoch_results(self, df_temp: pd.DataFrame, epoch: int) -> None:
         output_file = f"{self.output_prefix}_{epoch}.csv"
+        output_dir = os.path.dirname(output_file)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
         df_temp.to_csv(output_file, index=False)
 
     def __call__(self, molecules_selfies: List[str], epoch: int) -> List[float]:

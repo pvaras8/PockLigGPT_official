@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pockliggpt"
+version = "0.1.0"
+description = "Pocket-conditioned molecular generation with GPT + RL"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "pyyaml>=6.0",
+  "omegaconf>=2.3",
+  "tqdm>=4.66",
+  "requests>=2.31",
+  "selfies>=2.1",
+  "torch>=2.2",
+  "transformers>=4.40",
+  "huggingface_hub>=0.23",
+  "rdkit>=2023.09"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "black>=24.0", "ruff>=0.5"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pockliggpt*"]

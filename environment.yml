@@ -1,0 +1,37 @@
+name: pockliggpt
+
+channels:
+  - conda-forge
+  - pytorch
+
+dependencies:
+  - python=3.10
+
+  # Core
+  - numpy
+  - pandas
+  - pyyaml
+  - tqdm
+  - requests
+  - scipy
+
+  # ML
+  - pytorch
+  - torchvision
+  - torchaudio
+
+  # Bio / química
+  - rdkit
+  - biopython
+
+  # Notebook
+  - jupyterlab
+
+  # Pip
+  - pip
+  - pip:
+      - omegaconf
+      - selfies
+      - transformers
+      - huggingface_hub
+      - -e .

@@ -1,0 +1,54 @@
+experiment:
+  name: crossdocked_sequence_add_finetune_2
+  stage: finetune_2
+
+model:
+  type: sequence_add
+  n_layer: 24
+  n_head: 16
+  n_embd: 1024
+  dropout: 0.1
+  bias: false
+
+data:
+  loader_type: sequence_add
+  dataset: very_big_molecules_selfies_2/cross_docked_jblasser
+  block_size: 156
+  batch_size: 16
+  meta_path: data/very_big_molecules_selfies_2/cross_docked_jblasser/meta_chembl_db_aa_2_proto4.pkl
+  parquet_path: data/very_big_molecules_selfies_2/cross_docked_jblasser/crossdocked_clean_pocket_selfies_with_tokens.parquet
+  pocket_npz_path: data/very_big_molecules_selfies_2/cross_docked_jblasser/per_residue_pack.npz
+  pad_token_id: 0
+
+training:
+  init_from: resume
+  init_ckpt_path: out-models/ckpt_zink_chembl.pt
+  target_tokens: 524288
+  num_gpus: 4
+  learning_rate: 5.0e-6
+  min_lr: 5.0e-7
+  weight_decay: 0.01
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  max_iters: 1200
+  lr_decay_iters: 1200
+  warmup_iters: 120
+  decay_lr: true
+
+eval:
+  eval_interval: 100
+  eval_iters: 200
+  eval_only: false
+  always_save_checkpoint: false
+
+logging:
+  out_dir: out-models
+  checkpoint_name: ckpt_zink_chembl_sequence_add.pt
+  log_interval: 20
+
+system:
+  device: cuda
+  dtype: float16
+  backend: nccl
+  compile: false

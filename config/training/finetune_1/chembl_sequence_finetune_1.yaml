@@ -1,0 +1,54 @@
+experiment:
+  name: chembl_sequence_finetune_1
+  stage: finetune_1
+
+model:
+  type: sequence
+  n_layer: 24
+  n_head: 16
+  n_embd: 1024
+  dropout: 0.1
+  bias: false
+
+data:
+  loader_type: sequence
+  dataset: very_big_molecules_selfies_2/chembl
+  block_size: 156
+  batch_size: 16
+  meta_path: data/very_big_molecules_selfies_2/chembl/meta_chembl_db_aa_2_proto4.pkl
+  train_bin: data/very_big_molecules_selfies_2/chembl/train_1_ghs.bin
+  val_bin: data/very_big_molecules_selfies_2/chembl/val_1_ghs.bin
+  pad_token_id: 0
+
+training:
+  init_from: resume
+  init_ckpt_path: out-very-big-molecules-selfies-2/ckpt_zink_M.pt
+  target_tokens: 524288
+  num_gpus: 4
+  learning_rate: 5.0e-6
+  min_lr: 5.0e-7
+  weight_decay: 0.01
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  max_iters: 1200
+  lr_decay_iters: 1200
+  warmup_iters: 120
+  decay_lr: true
+
+eval:
+  eval_interval: 100
+  eval_iters: 200
+  eval_only: false
+  always_save_checkpoint: false
+
+logging:
+  out_dir: out-models
+  checkpoint_name: ckpt_zink_chembl.pt
+  log_interval: 20
+
+system:
+  device: cuda
+  dtype: float16
+  backend: nccl
+  compile: false

@@ -1,0 +1,18 @@
+dataset:
+  type: crossdocked
+  file: /LUSTRE/users/pvaras/sequence_gpt/data/very_big_molecules_selfies_2/cross_docked_jblasser/crossdocked_filtered_with_pocket_smiles.csv
+
+tokenizer:
+  type: pocket_ligand
+  max_length: 156
+  meta_path: datasets/tokenizer/meta_chembl_db_aa_2_proto4.pkl
+
+
+output:
+  dir: datasets/processed/crossdocked
+  train_file: train_crossdocked.bin
+  val_file: val_crossdocked.bin
+
+split:
+  val_fraction: 0.1
+  random_state: 42

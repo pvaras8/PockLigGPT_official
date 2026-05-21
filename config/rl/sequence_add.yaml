@@ -1,0 +1,96 @@
+# =========================
+# MODEL
+# =========================
+model:
+  type: "sequence_add"
+  module: "pockliggpt.models.model_sequence"
+  checkpoint_path: "out-models/ckpt_zink_chembl_sequence_add.pt"
+
+# =========================
+# DATA
+# =========================
+data:
+  smiles_csv: "datasets/raw/zinc250k/zinc_250k.csv"
+  smiles_column: "smiles"
+
+tokenizer:
+  meta_path: "datasets/tokenizer/meta_chembl_db_aa_2_proto4.pkl"
+
+seed: 42
+
+# =========================
+# RL
+# =========================
+rl:
+  batch_size: 64
+  lr: 3e-5
+  prompt_batch_size: 256
+  num_rollouts: 256
+  epochs: 30
+  ppo_epochs: 4
+  kl_coef: 0.005
+  gamma: 0.99
+  lam: 0.95
+  cliprange: 0.2
+  cliprange_value: 0.1
+  vf_coef: 1.0
+
+# =========================
+# GENERATION
+# =========================
+generation:
+  seq_length: 156
+  top_k: 10
+  temperature: 0.9
+
+# =========================
+# PROMPT
+# =========================
+prompt:
+  format: "pocket_ligand"
+  include_pocket_tokens: true
+  include_pocket_embedding: true
+  initial_ligand_tokens: 7
+
+# =========================
+# CONDITIONING
+# =========================
+conditioning:
+  pocket_str_path: "conditioning/pocket_str.txt"
+  pocket_emb_path: "conditioning/pocket_emb.npy"
+  pocket_emb_mode: "addition"
+  pocket_emb_aa_start: 2
+
+# =========================
+# REWARD
+# =========================
+reward:
+  providers:
+    - docking
+    - rdkit_props
+
+  combiner: "docking_logp"
+  results_output_prefix: "reward_results"
+
+  docking:
+    script: "scripts/reward_meeko_vina.py"
+    vars_file: "config/docking/vars_meeko.json"
+    smiles_output_file: "reward_outputs/smiles_input.smi"
+    output_prefix: "docking_results"
+    output_column: "Docking"
+
+# =========================
+# SYSTEM
+# =========================
+system:
+  train_device: "cuda:0"
+  ref_device: "cuda:1"
+  dtype: "bfloat16"
+
+# =========================
+# OUTPUT
+# =========================
+output:
+  ppo_ckpt_path: "out-models/ckpt_zink_chembl_sequence_add_buche.pt"
+  loss_history_file: "loss_history_M.txt"
+  save_trajectories: true

@@ -1,0 +1,21 @@
+dataset:
+  type: zinc20
+  files:
+    - data/raw/zinc20/smiles_BCAA.txt
+    - data/raw/zinc20/smiles_BCAB.txt
+
+tokenizer:
+  type: selfies
+  max_length: 156
+  meta_path: datasets/tokenizer/meta_chembl_db_aa_2_proto4.pkl
+  extend_existing_vocab: true
+
+
+output:
+  dir: datasets/processed/zinc20
+  train_file: train_zinc20.bin
+  val_file: val_zinc20.bin
+
+split:
+  val_fraction: 0.1
+  random_state: 42

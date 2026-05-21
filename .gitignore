@@ -1,0 +1,135 @@
+# =========================
+# Sistema / editores
+# =========================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.ipynb_checkpoints/
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# =========================
+# Entornos
+# =========================
+.env
+.venv/
+venv/
+env/
+conda_env/
+.python-version
+
+# =========================
+# Logs / salidas temporales
+# =========================
+*.log
+*.out
+*.err
+nohup.out
+
+# =========================
+# Modelos / checkpoints
+# =========================
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.pkl
+*.joblib
+
+# =========================
+# Datos y arrays grandes
+# =========================
+
+results/
+outputs/
+cache/
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.npz
+*.npy
+
+# =========================
+# Química computacional / docking
+# =========================
+*.sdf
+*.mol2
+*.pdbqt
+*.dlg
+
+# OJO:
+# normalmente NO ignores todos los .pdb
+# porque algunos receptores/ejemplos pequeños sí pueden interesar.
+# Si quieres ignorar solo resultados generados:
+prepared_receptors/
+docking_outputs/
+poses/
+vina_runs/
+
+# =========================
+# Figuras y PDFs generados
+# =========================
+figures/
+plots/
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.out
+
+# =========================
+# Archivos de experimentos masivos
+# =========================
+trajectories_*.txt
+attention_mean*.txt
+loss_history*.txt
+
+# =========================
+# WandB / tracking
+# =========================
+wandb/
+mlruns/
+tensorboard/
+runs/
+
+# =========================
+# Compresión / archivos pesados
+# =========================
+*.zip
+*.tar
+*.tar.gz
+*.gz
+*.bz2
+*.7z
+
+# =========================
+# Builds / packaging
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+# Tests / coverage
+# =========================
+.coverage
+.pytest_cache/
+htmlcov/
+
+*.smi
+
+experiments/rl/docking/
+

@@ -82,9 +82,7 @@ python scripts/tokenize_dataset.py --config config/tokenization/crossdocked.yaml
 ### 3) Training
 
 ```bash
-python scripts/train.py --config config/training/pretrain/zinc_20_sequence.yaml
-python scripts/train.py --config config/training/finetune_1/chembl_sequence.yaml
-python scripts/train.py --config config/training/finetune_2/crossdocked_sequence.yaml
+python scripts/train.py --config config/training/finetune_2/crossdocked_sequence_add.yaml
 ```
 
 ---
@@ -101,7 +99,20 @@ python -m huggingface_hub download pablovp8/PockLigGPT \
 
 ### 5) Reinforcement Learning (RL)
 
+One-command RL flow (set receptor center + launch PPO):
+
 ```bash
+python3 scripts/run_rl_pipeline.py \
+  --pdbqt-path ./pdbs/4yhj.pdbqt \
+  --center "32.0,28.0,36.0"
+```
+
+Equivalent explicit steps:
+
+```bash
+python sample_for_pdb.py \
+  --pdbqt_path ./example/4yhj.pdbqt \
+  --center "32.0,28.0,36.0"
 python scripts/train_ppo.py --config config/rl/sequence_add.yaml
 ```
 
@@ -124,45 +135,23 @@ Outputs:
 
 ## ⚙️ Docking setup
 
-### Download docking workflow
-
-```bash
-bash scripts/setup_docking.sh
-```
-
-### Install MGLTools
-
-👉 https://ccsb.scripps.edu/mgltools/
-
-```bash
-tar -zxvf mgltools_*.tar.gz
-cd mgltools_x86_64Linux2_1.5.6
-./install.sh
-```
-
-### Configure docking
+### Configure Meeko + Vina
 
 Edit:
 
 ```bash
-config/docking/vars_mgltools.json
+config/docking/vars_meeko.json
 ```
 
-This file contains **installation-dependent paths** that must be adapted to your system (local or HPC).
+Set these fields for your environment:
 
-Update:
-
-* `nn1_script`
-* `nn2_script`
-* `prepare_ligand4.py`
-* `prepare_receptor4.py`
-* `mgl_python`
-* `mgltools_directory`
 * `filename_of_receptor`
-* `root_output_folder`
-* `source_compound_file`
-* `output_directory`
 * `final_folder`
+* `num_processors`
+* `vina_cpu_per_job`
+* `exhaustiveness`
+* `n_poses`
+* `fallback_score`
 
 Define the docking box:
 
@@ -179,8 +168,7 @@ Before running RL with docking reward:
 * tokenizer `.pkl` exists
 * embeddings `.npy` generated
 * checkpoint path valid
-* `docking_vina/` downloaded
-* MGLTools installed
+* Meeko + Vina installed
 * docking config correctly set
 
 ---

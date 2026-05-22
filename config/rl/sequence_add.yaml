@@ -23,7 +23,7 @@ seed: 42
 # =========================
 rl:
   batch_size: 64
-  lr: 3e-5
+  lr: 1e-4
   prompt_batch_size: 256
   num_rollouts: 256
   epochs: 30
@@ -66,9 +66,10 @@ conditioning:
 # =========================
 reward:
   providers:
+    - docking
     - rdkit_props
 
-  combiner: "mw_only"
+  combiner: "docking_logp"
   results_output_prefix: "reward_results"
 
   docking:

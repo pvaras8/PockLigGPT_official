@@ -175,6 +175,7 @@ def _build_experiment_layout(cfg) -> None:
     output_cfg["ppo_ckpt_path"] = os.path.join(ckpt_dir, default_ckpt_name)
     output_cfg["loss_history_file"] = os.path.join(logs_dir, default_loss_name)
     output_cfg["trajectories_dir"] = trajectories_dir
+    output_cfg["run_dir"] = run_dir
 
     reward_cfg["results_output_prefix"] = os.path.join(reward_dir, "reward_results")
     docking_cfg["smiles_output_file"] = os.path.join(run_dir, "smiles_input.smi")
@@ -189,6 +190,7 @@ def _build_experiment_layout(cfg) -> None:
     print(f"- checkpoint: {output_cfg['ppo_ckpt_path']}")
     print(f"- loss_history: {output_cfg['loss_history_file']}")
     print(f"- trajectories: {output_cfg['trajectories_dir']}")
+    print(f"- run_dir_output: {output_cfg['run_dir']}")
     print(f"- reward_prefix: {reward_cfg['results_output_prefix']}")
     print(f"- docking_final_folder: {docking_dir}")
 

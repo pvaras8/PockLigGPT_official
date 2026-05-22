@@ -52,6 +52,7 @@ class PPOAgent(nn.Module):
         self._validate_checkpoint(checkpoint, model_checkpoint_path)
 
         gptconf = GPTConfig(**checkpoint["model_args"])
+        gptconf.attention_output_dir = cfg.get("output", {}).get("run_dir")
         self.model = GPT(gptconf).to(device=device, dtype=dtype)
 
         cleaned_state_dict = self._clean_state_dict(checkpoint["model"])

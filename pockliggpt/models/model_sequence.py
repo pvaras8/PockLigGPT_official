@@ -9,6 +9,7 @@ https://github.com/huggingface/transformers/blob/main/src/transformers/models/gp
 
 import math
 import inspect
+import os
 from dataclasses import dataclass
 
 import numpy as np
@@ -43,6 +44,7 @@ class CausalSelfAttention(nn.Module):
         self.n_head = config.n_head
         self.n_embd = config.n_embd
         self.dropout = config.dropout
+        self.attention_output_dir = getattr(config, "attention_output_dir", None)
 
         self.register_buffer(
             "bias",
@@ -74,7 +76,9 @@ class CausalSelfAttention(nn.Module):
         att = self.attn_dropout(att)
 
         if epoch is not None:
-            att_file = f"attention_mean_{epoch}.txt"
+            base_dir = self.attention_output_dir or "."
+            os.makedirs(base_dir, exist_ok=True)
+            att_file = os.path.join(base_dir, f"attention_mean_{epoch}.txt")
             att_mean_batch = att.mean(1).detach().to(torch.float32).cpu().numpy()
             with open(att_file, "a") as f:
                 f.write(

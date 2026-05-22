@@ -57,7 +57,7 @@ prompt:
 # =========================
 conditioning:
   pocket_str_path: "conditioning/pocket_str.txt"
-  pocket_emb_path: "conditioning/6eif_pocket_prott5_embeddings.npy"
+  pocket_emb_path: "conditioning/p_dyrk1a_per_residue.npy"
   pocket_emb_mode: "addition"
   pocket_emb_aa_start: 2
 
@@ -91,6 +91,6 @@ system:
 # OUTPUT
 # =========================
 output:
-  ppo_ckpt_path: "checkpoints/ckpt_zink_chembl_sequence_add_buche.pt"
+  ppo_ckpt_path: "checkpoints/ckpt_zink_chembl_sequence_add_dyrk1a.pt"
   loss_history_file: "loss_history_M.txt"
   save_trajectories: true

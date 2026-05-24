@@ -23,7 +23,7 @@ seed: 42
 # =========================
 rl:
   batch_size: 64
-  lr: 5e-5
+  lr: 8e-6
   prompt_batch_size: 256
   num_rollouts: 256
   epochs: 30

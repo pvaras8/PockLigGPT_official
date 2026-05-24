@@ -13,7 +13,7 @@
   "n_poses": 5,
   "write_n_poses": 5,
   "energy_range": 3.0,
-  "fallback_score": -6.0,
+  "fallback_score": -5.0,
   "max_mw": 500.0,
   "save_every": 25,
   "timeout_seconds": 150,

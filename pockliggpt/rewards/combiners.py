@@ -21,7 +21,7 @@ def combine_docking_only(d):
 
 
 def combine_docking_logP(docking, logp):
-    def docking_component(d, d_min=-12.0, d_max=-6.0, s_min=-6.0, s_max=6.0, power=1.3):
+    def docking_component(d, d_min=-11.0, d_max=-5.0, s_min=-6.0, s_max=6.0, power=1.3):
         z = (d - d_min) / (d_max - d_min) * (s_max - s_min) + s_min
         base = 1.0 - (1.0 / (1.0 + np.exp(-z)))
         return np.clip(base, 0.0, 1.0) ** power

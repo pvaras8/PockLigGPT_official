@@ -42,17 +42,12 @@ def gae(
 
 
 def normalize_advantages(advantages: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    valid_mask = mask.bool()
-    valid = advantages[valid_mask]
-
-    if valid.numel() == 0:
+    if advantages.numel() == 0:
         return torch.zeros_like(advantages)
 
-    mean = valid.mean()
-    std = valid.std(unbiased=False).clamp_min(1e-8)
-    normalized = (advantages - mean) / std
-
-    return torch.where(valid_mask, normalized, torch.zeros_like(advantages))
+    mean = advantages.mean()
+    std = advantages.std(unbiased=False).clamp_min(1e-8)
+    return (advantages - mean) / std
 
 
 def ppo_loss(

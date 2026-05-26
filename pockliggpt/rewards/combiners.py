@@ -4,7 +4,7 @@ import numpy as np
 from numpy import exp
 
 
-def sigmoid_pen_docking(x, min_x=-12.0, max_x=-6.0, min_sig_in=-6, max_sig_in=6):
+def sigmoid_pen_docking(x, min_x=-11.0, max_x=-5.0, min_sig_in=-6, max_sig_in=6):
     sig = lambda y: 1 / (1 + exp(-y))
     input_map = lambda y: (y - min_x) / (max_x - min_x) * (max_sig_in - min_sig_in) + min_sig_in
     return sig(input_map(x))

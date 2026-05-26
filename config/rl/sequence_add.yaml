@@ -66,9 +66,9 @@ conditioning:
 # =========================
 reward:
   providers:
-    - rdkit_props
+    - docking
 
-  combiner: "mw_only"
+  combiner: "docking_only"
   results_output_prefix: "reward_results"
 
   docking:

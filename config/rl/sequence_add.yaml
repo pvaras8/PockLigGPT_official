@@ -23,12 +23,12 @@ seed: 42
 # =========================
 rl:
   batch_size: 64
-  lr: 1e-5
+  lr: 2e-5
   prompt_batch_size: 256
   num_rollouts: 256
   epochs: 30
   ppo_epochs: 4
-  kl_coef: 0.0005
+  kl_coef: 0.001
   gamma: 0.99
   lam: 0.95
   cliprange: 0.2
@@ -67,9 +67,10 @@ conditioning:
 reward:
   providers:
     - docking
-    - rdkit_props
+    # - rdkit_props
 
-  combiner: "docking_logp"
+  # combiner: "docking_logp"
+  combiner: "docking_only"
   results_output_prefix: "reward_results"
 
   docking:

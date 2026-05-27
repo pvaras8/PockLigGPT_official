@@ -67,8 +67,9 @@ conditioning:
 reward:
   providers:
     - docking
+    - rdkit_props
 
-  combiner: "docking_only"
+  combiner: "docking_logp"
   results_output_prefix: "reward_results"
 
   docking:

@@ -396,6 +396,7 @@ class GPT(nn.Module):
         pad_token=0,
         epoch=None,
         pocket_emb=None,
+        legacy_exact=False,
     ):
         batch_size = idx.size(0)
         eos_generated = torch.zeros(batch_size, dtype=torch.bool, device=idx.device)
@@ -413,7 +414,9 @@ class GPT(nn.Module):
                 if pocket_emb.dim() == 2:
                     pocket_emb = pocket_emb.unsqueeze(0)
 
-                if idx.size(1) > self.config.block_size:
+                if legacy_exact:
+                    pocket_emb_cond = pocket_emb[:, :T_cond, :]
+                elif idx.size(1) > self.config.block_size:
                     pocket_emb_cond = pocket_emb[:, -self.config.block_size:, :]
                 else:
                     pocket_emb_cond = pocket_emb[:, :T_cond, :]
@@ -455,7 +458,9 @@ class GPT(nn.Module):
                 if pocket_emb.dim() == 2:
                     pocket_emb = pocket_emb.unsqueeze(0)
 
-                if idx.size(1) > self.config.block_size:
+                if legacy_exact:
+                    pocket_emb_final = pocket_emb[:, :T_final, :]
+                elif idx.size(1) > self.config.block_size:
                     pocket_emb_final = pocket_emb[:, -self.config.block_size:, :]
                 else:
                     pocket_emb_final = pocket_emb[:, :T_final, :]
@@ -467,7 +472,7 @@ class GPT(nn.Module):
                 epoch=epoch,
                 pocket_emb=pocket_emb_final,
             )
-            if was_training:
+            if was_training and not legacy_exact:
                 self.train()
 
         pad_length = seq_length - idx.size(1)

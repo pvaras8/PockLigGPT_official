@@ -50,6 +50,10 @@ def normalize_advantages(advantages: torch.Tensor, mask: torch.Tensor) -> torch.
     return (advantages - mean) / std
 
 
+def normalize_advantages_legacy(advantages: torch.Tensor) -> torch.Tensor:
+    return (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
+
 def ppo_loss(
     logprobs: torch.Tensor,
     values: torch.Tensor,

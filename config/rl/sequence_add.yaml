@@ -22,13 +22,14 @@ seed: 42
 # RL
 # =========================
 rl:
+  legacy_exact: true
   batch_size: 64
-  lr: 2e-5
+  lr: 3e-5
   prompt_batch_size: 256
   num_rollouts: 256
   epochs: 30
   ppo_epochs: 4
-  kl_coef: 0.001
+  kl_coef: 0.005
   gamma: 0.99
   lam: 0.95
   cliprange: 0.2
@@ -40,6 +41,7 @@ rl:
 # =========================
 generation:
   seq_length: 156
+  max_new_tokens: 106
   top_k: 10
   temperature: 0.9
 
@@ -50,7 +52,7 @@ prompt:
   format: "pocket_ligand"
   include_pocket_tokens: true
   include_pocket_embedding: true
-  initial_ligand_tokens: 7
+  prompt_size: 51
 
 # =========================
 # CONDITIONING
@@ -95,3 +97,4 @@ output:
   ppo_ckpt_path: "checkpoints/ckpt_zink_chembl_sequence_add_dyrk1a.pt"
   loss_history_file: "loss_history_M.txt"
   save_trajectories: true
+  trajectories_dir: "."

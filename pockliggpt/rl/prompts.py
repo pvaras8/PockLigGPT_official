@@ -44,9 +44,14 @@ class PromptBuilder:
         self.cfg = cfg
         self.stoi = stoi
         self.adapter = adapter
-        prefix_tokens = self.adapter.build_prompt_prefix(self.stoi)
-        self.initial_ligand_tokens = int(cfg["prompt"].get("initial_ligand_tokens", 7))
-        self.prompt_size = len(prefix_tokens) + 1 + self.initial_ligand_tokens
+        self.legacy_exact = bool(cfg["rl"].get("legacy_exact", False))
+
+        if self.legacy_exact:
+            self.prompt_size = int(cfg["prompt"]["prompt_size"])
+        else:
+            prefix_tokens = self.adapter.build_prompt_prefix(self.stoi)
+            initial_ligand_tokens = int(cfg["prompt"].get("initial_ligand_tokens", 7))
+            self.prompt_size = len(prefix_tokens) + 1 + initial_ligand_tokens
         
     def build_prompt_tokens(self, smiles: str) -> Optional[List[int]]:
         smiles = smiles.strip()
@@ -67,11 +72,13 @@ class PromptBuilder:
                 f"(mínimo requerido: {min_required})"
             )
 
-        if any(token not in self.stoi for token in selfie_tokens):
+        if not self.legacy_exact and any(token not in self.stoi for token in selfie_tokens):
             return None
 
         ligand_tokens = [self.stoi["<LIGAND>"]]
-        ligand_tokens.extend([self.stoi[token] for token in selfie_tokens])
+        ligand_tokens.extend(
+            [self.stoi[token] for token in selfie_tokens if token in self.stoi]
+        )
 
         tokens = prefix_tokens + ligand_tokens
 

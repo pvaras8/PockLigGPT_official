@@ -11,7 +11,13 @@ from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
 
 from .agent import PPOAgent
-from .losses import gae, logprobs_from_logits, normalize_advantages, ppo_loss
+from .losses import (
+    gae,
+    logprobs_from_logits,
+    normalize_advantages,
+    normalize_advantages_legacy,
+    ppo_loss,
+)
 from .model_adapters import get_torch_dtype
 from .prompts import CustomPromptDataGenerator, PromptBuilder, PromptDataset, strip_to_ligand
 from pockliggpt.rewards import RewardRunner
@@ -57,6 +63,7 @@ class RolloutCreator:
         self.ref_device = cfg["system"]["ref_device"]
         self.prompt_batch_size = int(cfg["rl"]["prompt_batch_size"])
         self.kl_coef = float(cfg["rl"]["kl_coef"])
+        self.legacy_exact = bool(cfg["rl"].get("legacy_exact", False))
         self.save_trajectories = bool(cfg["output"].get("save_trajectories", False))
 
         self.trajectories_dir = cfg["output"].get("trajectories_dir", None)
@@ -127,12 +134,56 @@ class RolloutCreator:
             texts = [strip_to_ligand(t) for t in texts]
             scores = self.reward_runner(texts, epoch)
 
-            if len(scores) != n_trajectories:
+            if not self.legacy_exact and len(scores) != n_trajectories:
                 raise RuntimeError(
                     f"RewardRunner devolvió {len(scores)} scores pero esperaba {n_trajectories}"
                 )
 
             rewards = -self.kl_coef * (logprobs - ref_logprobs)
+
+            if self.legacy_exact:
+                response_tensors = trajectories[:, query_tensors.shape[1] :]
+                truncated_values = [
+                    values[i, start : ends[i]].clone() for i in range(n_trajectories)
+                ]
+                truncated_logprobs = [
+                    logprobs[i, start : ends[i]].clone() for i in range(n_trajectories)
+                ]
+                all_rewards = [
+                    rewards[i, start : ends[i]].clone() for i in range(n_trajectories)
+                ]
+
+                for i in range(n_trajectories):
+                    all_rewards[i][-1] += scores[i]
+
+                truncated_values_padded = pad_sequence(
+                    truncated_values,
+                    batch_first=True,
+                    padding_value=float("nan"),
+                )
+                truncated_logprobs_padded = pad_sequence(
+                    truncated_logprobs,
+                    batch_first=True,
+                    padding_value=float("nan"),
+                )
+                all_rewards_padded = pad_sequence(
+                    all_rewards,
+                    batch_first=True,
+                    padding_value=float("nan"),
+                )
+
+                new_rollouts = [
+                    PPORLElement(
+                        query_tensor=query_tensors[i],
+                        response_tensor=response_tensors[i],
+                        logprobs=truncated_logprobs_padded[i],
+                        values=truncated_values_padded[i],
+                        rewards=all_rewards_padded[i],
+                    )
+                    for i in range(n_trajectories)
+                ]
+                all_rollouts.extend(new_rollouts)
+                continue
 
             valid_indices = []
             truncated_responses = []
@@ -198,10 +249,13 @@ class RolloutCreator:
             ]
             all_rollouts.extend(new_rollouts)
 
+        if self.legacy_exact:
+            mean_score = float(torch.tensor(scores).mean().detach().cpu().item())
+            return all_rollouts, mean_score
+
         rollouts_out = all_rollouts[:num_rollouts]
         scores_out = all_scores[: len(rollouts_out)]
         mean_score = float(np.mean(scores_out)) if len(scores_out) > 0 else 0.0
-
         return rollouts_out, mean_score
 
 
@@ -227,7 +281,10 @@ def compute_loss(cfg, batch, model: PPOAgent, stoi: Dict[str, int], device: str)
         gamma=float(cfg["rl"]["gamma"]),
         lam=float(cfg["rl"]["lam"]),
     )
-    advantages = normalize_advantages(advantages, mask)
+    if bool(cfg["rl"].get("legacy_exact", False)):
+        advantages = normalize_advantages_legacy(advantages)
+    else:
+        advantages = normalize_advantages(advantages, mask)
 
     trajectories = torch.hstack([query_tensors, response_tensors])
     padding_mask = trajectories.eq(stoi["<PAD>"])
@@ -255,19 +312,26 @@ def compute_loss(cfg, batch, model: PPOAgent, stoi: Dict[str, int], device: str)
         vf_coef=float(cfg["rl"]["vf_coef"]),
     )
 
-    lengths = mask.sum(dim=1).long().clamp_min(1)
-    last_idx = (lengths - 1).unsqueeze(1)
-    last_rewards = old_rewards_masked.gather(1, last_idx).squeeze(1)
-    mean_last_reward = last_rewards.mean().item()
+    if bool(cfg["rl"].get("legacy_exact", False)):
+        mean_last_reward = old_rewards[:, -1].mean().item()
+    else:
+        lengths = mask.sum(dim=1).long().clamp_min(1)
+        last_idx = (lengths - 1).unsqueeze(1)
+        last_rewards = old_rewards_masked.gather(1, last_idx).squeeze(1)
+        mean_last_reward = last_rewards.mean().item()
 
     return loss, stats, mean_last_reward
 
 
-def save_loss_stats(loss_history_file: str, stats: dict):
+def save_loss_stats(loss_history_file: str, stats: dict, legacy_exact: bool = False):
     with open(loss_history_file, "a") as f:
-        f.write(
-            f"{stats['loss']},{stats['pg_loss']},{stats['vf_loss']},{stats['pg_clipfrac']}\n"
-        )
+        if legacy_exact:
+            f.write(f"{stats['loss']},{stats['pg_loss']},{stats['vf_loss']}\n")
+        else:
+            f.write(
+                f"{stats['loss']},{stats['pg_loss']},{stats['vf_loss']},"
+                f"{stats['pg_clipfrac']}\n"
+            )
 
 
 def run_ppo_training(cfg, adapter):
@@ -285,7 +349,15 @@ def run_ppo_training(cfg, adapter):
     decode = lambda ids: "".join([itos.get(i, "") for i in ids if i in itos])
 
     smiles_df = pd.read_csv(cfg["data"]["smiles_csv"])
-    smiles_list = smiles_df[cfg["data"]["smiles_column"]].astype(str).str.strip().tolist()
+    if bool(cfg["rl"].get("legacy_exact", False)):
+        smiles_list = smiles_df[cfg["data"]["smiles_column"]].str.strip().tolist()
+    else:
+        smiles_list = (
+            smiles_df[cfg["data"]["smiles_column"]]
+            .astype(str)
+            .str.strip()
+            .tolist()
+        )
 
     prompt_builder = PromptBuilder(cfg, stoi, adapter)
     prompt_dataset = PromptDataset(smiles_list, prompt_builder)
@@ -361,10 +433,17 @@ def run_ppo_training(cfg, adapter):
                     stoi=stoi,
                     device=train_device,
                 )
-                opt.zero_grad(set_to_none=True)
                 loss.backward()
                 opt.step()
-                save_loss_stats(loss_history_file, stats)
+                if bool(cfg["rl"].get("legacy_exact", False)):
+                    opt.zero_grad()
+                else:
+                    opt.zero_grad(set_to_none=True)
+                save_loss_stats(
+                    loss_history_file,
+                    stats,
+                    legacy_exact=bool(cfg["rl"].get("legacy_exact", False)),
+                )
                 tbar.update()
 
         all_scores.append(score)
@@ -378,8 +457,9 @@ def run_ppo_training(cfg, adapter):
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": opt.state_dict(),
                 "all_scores": all_scores,
-                "config": OmegaConf.to_container(cfg, resolve=True),
             }
+            if not bool(cfg["rl"].get("legacy_exact", False)):
+                checkpoint_ppo["config"] = OmegaConf.to_container(cfg, resolve=True)
             torch.save(checkpoint_ppo, ckpt_ppo_path)
             print(
                 f"✅ Nuevo mejor modelo guardado en {ckpt_ppo_path} "

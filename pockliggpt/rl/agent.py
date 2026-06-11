@@ -24,17 +24,19 @@ class PPOAgent(nn.Module):
         self.dtype = dtype
 
         generation_cfg = cfg["generation"]
-
-        prefix_tokens = self.adapter.build_prompt_prefix(stoi)
-        initial_ligand_tokens = int(cfg["prompt"].get("initial_ligand_tokens", 7))
-
-        prompt_size = len(prefix_tokens) + 1 + initial_ligand_tokens
         seq_length = int(generation_cfg["seq_length"])
-        max_new_tokens = seq_length - prompt_size
+
+        if bool(cfg["rl"].get("legacy_exact", False)):
+            max_new_tokens = int(generation_cfg["max_new_tokens"])
+        else:
+            prefix_tokens = self.adapter.build_prompt_prefix(stoi)
+            initial_ligand_tokens = int(cfg["prompt"].get("initial_ligand_tokens", 7))
+            prompt_size = len(prefix_tokens) + 1 + initial_ligand_tokens
+            max_new_tokens = seq_length - prompt_size
 
         if max_new_tokens <= 0:
             raise ValueError(
-                f"seq_length={seq_length} demasiado pequeño para prompt_size={prompt_size}"
+                f"generation.max_new_tokens debe ser positivo, recibido {max_new_tokens}"
             )
 
         self.generate_kwargs = {
@@ -112,6 +114,8 @@ class PPOAgent(nn.Module):
 
     def generate(self, input_ids: torch.Tensor, epoch: int) -> torch.Tensor:
         extra_kwargs = self._extra_model_kwargs(input_ids)
+        if bool(self.cfg["rl"].get("legacy_exact", False)):
+            extra_kwargs["legacy_exact"] = True
         return self.model.generate(
             idx=input_ids,
             epoch=epoch,

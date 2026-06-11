@@ -30,10 +30,12 @@ pip install -e .
 
 ---
 
-## ⚡ Quickstart (RL inference / generation)
+## ⚡ Quickstart (RL)
 
 ```bash
-python scripts/train_ppo.py --config config/rl/sequence_add.yaml
+python3 scripts/run_rl_pipeline.py \
+  --pdbqt-path ./pdbs/4yhj.pdbqt \
+  --center "32.0,28.0,36.0"
 ```
 
 ---
@@ -99,7 +101,7 @@ python -m huggingface_hub download pablovp8/PockLigGPT \
 
 ### 5) Reinforcement Learning (RL)
 
-One-command RL flow (set receptor center + launch PPO):
+Use `run_rl_pipeline.py` as the main entry point for RL:
 
 ```bash
 python3 scripts/run_rl_pipeline.py \
@@ -107,13 +109,29 @@ python3 scripts/run_rl_pipeline.py \
   --center "32.0,28.0,36.0"
 ```
 
-Equivalent explicit steps:
+The pipeline:
+
+* validates the receptor `.pdbqt` file and docking center
+* updates the docking configuration
+* creates the experiment output directories
+* launches PPO training using `config/rl/sequence_add.yaml`
+
+To use a different RL configuration:
 
 ```bash
-python sample_for_pdb.py \
-  --pdbqt_path ./example/4yhj.pdbqt \
-  --center "32.0,28.0,36.0"
-python scripts/train_ppo.py --config config/rl/sequence_add.yaml
+python3 scripts/run_rl_pipeline.py \
+  --pdbqt-path ./pdbs/4yhj.pdbqt \
+  --center "32.0,28.0,36.0" \
+  --config config/rl/sequence_add.yaml
+```
+
+Additional training options can be forwarded after `--`:
+
+```bash
+python3 scripts/run_rl_pipeline.py \
+  --pdbqt-path ./pdbs/4yhj.pdbqt \
+  --center "32.0,28.0,36.0" \
+  -- --no-prompt
 ```
 
 ---
@@ -145,17 +163,15 @@ config/docking/vars_meeko.json
 
 Set these fields for your environment:
 
-* `filename_of_receptor`
-* `final_folder`
 * `num_processors`
 * `vina_cpu_per_job`
 * `exhaustiveness`
 * `n_poses`
 * `fallback_score`
 
-Define the docking box:
+The receptor path and docking center are set automatically from
+`run_rl_pipeline.py`. Configure only the docking box dimensions manually:
 
-* `center_x`, `center_y`, `center_z`
 * `size_x`, `size_y`, `size_z`
 
 ---
@@ -164,6 +180,7 @@ Define the docking box:
 
 Before running RL with docking reward:
 
+* receptor `.pdbqt` file available
 * datasets available
 * tokenizer `.pkl` exists
 * embeddings `.npy` generated

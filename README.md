@@ -18,6 +18,41 @@ Researchers and industry partners can submit target proteins (PDB) and request m
 
 Pretrained and fine-tuned checkpoints are available for direct use.
 
+## 📦 Training Data
+
+👉 https://huggingface.co/datasets/pablovp8/PockLigGPT-training-data
+
+Download the prepared ChEMBL binaries, CrossDocked assets, and tokenizer into
+the paths expected by the training configurations:
+
+```bash
+hf download pablovp8/PockLigGPT-training-data \
+  --repo-type dataset \
+  --include "chembl/*" \
+  --include "crossdocked/*" \
+  --local-dir datasets/processed
+
+hf download pablovp8/PockLigGPT-training-data \
+  --repo-type dataset \
+  --include "tokenizer/*" \
+  --local-dir datasets
+```
+
+The CrossDocked embedding archive is split for reliable distribution.
+Reassemble it and create the memory-mapped NPY before finetune 2:
+
+```bash
+python scripts/assemble_embedding_pack.py \
+  --parts-dir datasets/processed/crossdocked \
+  --output datasets/processed/crossdocked/per_residue_pack.npz \
+  --delete-parts
+
+python scripts/convert_embedding_pack.py \
+  --input datasets/processed/crossdocked/per_residue_pack.npz \
+  --output datasets/processed/crossdocked/per_residue_pack.npy \
+  --delete-source
+```
+
 ---
 
 ## 🚀 Installation
@@ -104,8 +139,9 @@ checkpoints/ckpt_zinc20.pt
 
 ### 2) ChEMBL Finetune 1
 
-Place the ChEMBL CSV files configured in `config/tokenization/chembl.yaml`
-under `datasets/raw/chembl/`, then tokenize them:
+Either download the prepared `.bin` files from the training-data repository,
+or place the ChEMBL CSV files configured in `config/tokenization/chembl.yaml`
+under `datasets/raw/chembl/` and tokenize them:
 
 ```bash
 python scripts/tokenize_dataset.py \
@@ -136,7 +172,8 @@ checkpoints/ckpt_zinc20_chembl.pt
 
 CrossDocked does **not** use `.bin` files. Its preprocessing has two steps.
 
-First, run `notebooks/prott5_crossdocked_embeddings_en.ipynb` to generate:
+Either download the prepared assets from the training-data repository, or run
+`notebooks/prott5_crossdocked_embeddings_en.ipynb` to generate:
 
 ```text
 datasets/processed/crossdocked/per_residue_index.parquet

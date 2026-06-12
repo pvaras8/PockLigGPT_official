@@ -49,6 +49,9 @@ checkpoints/
 # Datos y arrays grandes
 # =========================
 
+# Permite versionar embedding de ejemplo en conditioning/
+!conditioning/pocket_emb.npy
+
 results/
 outputs/
 cache/

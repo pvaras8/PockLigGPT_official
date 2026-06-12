@@ -2,7 +2,7 @@
 # MODEL
 # =========================
 model:
-  checkpoint_path: "checkpoints/ckpt_zinc20_chembl_crossdocked.pt"
+  checkpoint_path: "checkpoints/ckpt_zink_chembl_cross_sequence_add.pt"
 
 # =========================
 # DATA

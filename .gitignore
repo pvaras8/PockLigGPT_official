@@ -49,9 +49,6 @@ checkpoints/
 # Datos y arrays grandes
 # =========================
 
-# Permite versionar embedding de ejemplo en conditioning/
-!conditioning/pocket_emb.npy
-
 results/
 outputs/
 cache/
@@ -63,6 +60,9 @@ cache/
 *.hdf5
 *.npz
 *.npy
+
+# Permite versionar embedding de ejemplo en conditioning/
+!conditioning/pocket_emb.npy
 
 # Permite versionar dataset base de Zink250k
 !datasets/raw/zinc250k/*.csv

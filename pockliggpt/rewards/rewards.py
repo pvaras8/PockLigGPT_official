@@ -107,25 +107,33 @@ class RewardRunner:
         valid_indices = [idx for idx, _ in valid_pairs]
         valid_smiles = [smi for _, smi in valid_pairs]
 
-        provider_dfs = [provider.compute(valid_smiles, epoch) for provider in self.providers]
-        df_temp = self._merge_provider_outputs(provider_dfs)
-        df_temp = self._apply_combiner(df_temp)
-        self._save_epoch_results(df_temp, epoch)
+        try:
+            provider_dfs = [
+                provider.compute(valid_smiles, epoch) for provider in self.providers
+            ]
+            df_temp = self._merge_provider_outputs(provider_dfs)
+            df_temp = self._apply_combiner(df_temp)
+            self._save_epoch_results(df_temp, epoch)
 
-        valid_rewards = (
-            df_temp.sort_values("input_idx")["Fitness"]
-            .fillna(0.0)
-            .astype(float)
-            .tolist()
-        )
-
-        if len(valid_rewards) != len(valid_smiles):
-            raise RuntimeError(
-                f"Longitud de rewards válidas incorrecta: {len(valid_rewards)} vs {len(valid_smiles)}"
+            valid_rewards = (
+                df_temp.sort_values("input_idx")["Fitness"]
+                .fillna(0.0)
+                .astype(float)
+                .tolist()
             )
 
-        rewards = [0.0] * len(molecules_selfies)
-        for original_idx, reward in zip(valid_indices, valid_rewards):
-            rewards[original_idx] = float(reward)
+            if len(valid_rewards) != len(valid_smiles):
+                raise RuntimeError(
+                    "Longitud de rewards válidas incorrecta: "
+                    f"{len(valid_rewards)} vs {len(valid_smiles)}"
+                )
 
-        return rewards
+            rewards = [0.0] * len(molecules_selfies)
+            for original_idx, reward in zip(valid_indices, valid_rewards):
+                rewards[original_idx] = float(reward)
+
+            return rewards
+
+        except Exception as exc:
+            print(f"Error durante reward_fn: {exc}")
+            return [0.0] * len(molecules_selfies)

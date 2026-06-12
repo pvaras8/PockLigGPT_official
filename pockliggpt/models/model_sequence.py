@@ -454,17 +454,12 @@ class GPT(nn.Module):
 
                 pocket_emb_final = pocket_emb[:, :T_final, :]
 
-            was_training = self.training
             self.eval()
-            try:
-                _ = self(
-                    idx_final,
-                    epoch=epoch,
-                    pocket_emb=pocket_emb_final,
-                )
-            finally:
-                if was_training:
-                    self.train()
+            _ = self(
+                idx_final,
+                epoch=epoch,
+                pocket_emb=pocket_emb_final,
+            )
 
         pad_length = seq_length - idx.size(1)
         if pad_length > 0:

@@ -3,7 +3,7 @@ import torch
 from pockliggpt.models.model_sequence import GPT, GPTConfig
 
 
-def test_generate_restores_training_mode(tmp_path):
+def test_generate_keeps_legacy_eval_mode(tmp_path):
     config = GPTConfig(
         block_size=8,
         vocab_size=16,
@@ -28,5 +28,5 @@ def test_generate_restores_training_mode(tmp_path):
         epoch=0,
     )
 
-    assert model.training
+    assert not model.training
     assert (tmp_path / "attention_mean_0.txt").is_file()

@@ -84,7 +84,6 @@ class RolloutCreator:
 
     def make_experience(self, model: PPOAgent, epoch: int, num_rollouts: int):
         all_rollouts = []
-        all_scores = []
 
         while len(all_rollouts) < num_rollouts:
             try:
@@ -134,7 +133,6 @@ class RolloutCreator:
                     f"RewardRunner devolvió {len(scores)} scores; "
                     f"se esperaban {n_trajectories}"
                 )
-            all_scores.extend(float(score) for score in scores)
 
             rewards = -self.kl_coef * (logprobs - ref_logprobs)
 
@@ -180,9 +178,7 @@ class RolloutCreator:
             ]
             all_rollouts.extend(new_rollouts)
 
-        all_rollouts = all_rollouts[:num_rollouts]
-        all_scores = all_scores[:num_rollouts]
-        mean_score = float(np.mean(all_scores))
+        mean_score = float(torch.tensor(scores).mean().detach().cpu().item())
         return all_rollouts, mean_score
 
 

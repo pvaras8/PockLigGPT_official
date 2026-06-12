@@ -1,6 +1,6 @@
 dataset:
   type: crossdocked
-  file: datasets/raw/crossdocked/crossdocked_filtered_with_pocket_smiles.csv
+  file: datasets/processed/crossdocked/per_residue_index.parquet
 
 tokenizer:
   type: pocket_ligand
@@ -10,9 +10,4 @@ tokenizer:
 
 output:
   dir: datasets/processed/crossdocked
-  train_file: train_crossdocked.bin
-  val_file: val_crossdocked.bin
-
-split:
-  val_fraction: 0.1
-  random_state: 42
+  file: crossdocked_clean_pocket_selfies_with_tokens.parquet

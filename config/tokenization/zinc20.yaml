@@ -1,8 +1,8 @@
 dataset:
   type: zinc20
   files:
-    - data/raw/zinc20/smiles_BCAA.txt
-    - data/raw/zinc20/smiles_BCAB.txt
+    - datasets/raw/zinc20/smiles_BCAA.txt
+    - datasets/raw/zinc20/smiles_BCAB.txt
 
 tokenizer:
   type: selfies

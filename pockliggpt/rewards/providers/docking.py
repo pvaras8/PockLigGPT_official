@@ -16,8 +16,8 @@ class DockingProvider(RewardProvider):
     El script debe escribir un CSV temporal con una columna tipo Docking.
     """
 
-    def __init__(self, cfg, provider_cfg=None):
-        super().__init__(cfg, provider_cfg)
+    def __init__(self, provider_cfg=None):
+        super().__init__(provider_cfg)
 
         self.script = os.path.abspath(self.provider_cfg["script"])
         self.vars_file = os.path.abspath(self.provider_cfg["vars_file"])

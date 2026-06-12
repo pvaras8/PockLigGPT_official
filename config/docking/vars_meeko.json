@@ -1,12 +1,7 @@
 {
-  "filename_of_receptor": "./pdbs/4yhj.pdbqt",
-  "center_x": 32.0,
-  "center_y": 28.0,
-  "center_z": 36.0,
   "size_x": 20.0,
   "size_y": 20.0,
   "size_z": 20.0,
-  "final_folder": "reward_outputs",
   "num_processors": 60,
   "vina_cpu_per_job": 1,
   "exhaustiveness": 8,
@@ -15,8 +10,6 @@
   "energy_range": 3.0,
   "fallback_score": -5.0,
   "max_mw": 500.0,
-  "save_every": 25,
-  "timeout_seconds": 150,
   "embed_seed": 42,
   "vina_seed": 12345,
   "sf_name": "vina"

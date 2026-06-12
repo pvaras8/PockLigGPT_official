@@ -30,12 +30,12 @@ pip install -e .
 
 ---
 
-## ⚡ Quickstart (RL)
+## ⚡ RL command
 
 ```bash
 python3 scripts/run_rl_pipeline.py \
-  --pdbqt-path ./pdbs/4yhj.pdbqt \
-  --center "32.0,28.0,36.0"
+  --pdbqt-path /path/to/receptor.pdbqt \
+  --center "CENTER_X,CENTER_Y,CENTER_Z"
 ```
 
 ---
@@ -53,48 +53,136 @@ PockLigGPT supports three main workflows:
 
 ---
 
-## 📂 Workflow
+## 📂 Training Workflow
 
-### 1) Prepare datasets
+The complete training sequence is:
 
-Datasets are **not included**.
-
-```bash
-datasets/raw/
+```text
+ZINC20 pretraining
+    ↓ ckpt_zinc20.pt
+ChEMBL finetune 1
+    ↓ ckpt_zinc20_chembl.pt
+CrossDocked finetune 2
+    ↓ ckpt_zinc20_chembl_crossdocked.pt
+Reinforcement learning
 ```
 
-Typical datasets:
+This repository uses **ZINC20** for pretraining. ZINC250K is only the small
+SMILES dataset used by the default RL workflow.
 
-* ChEMBL
-* ZINC20
-* CrossDocked
+Large training datasets are not included in Git.
 
----
+### 1) ZINC20 Pretraining
 
-### 2) Tokenization
-
-```bash
-python scripts/tokenize_dataset.py --config config/tokenization/chembl.yaml
-python scripts/tokenize_dataset.py --config config/tokenization/zinc20.yaml
-python scripts/tokenize_dataset.py --config config/tokenization/crossdocked.yaml
-```
-
----
-
-### 3) Training
+Place the ZINC20 source files under `datasets/raw/zinc20/`, then create the
+fixed-length binary datasets:
 
 ```bash
-python scripts/train.py --config config/training/finetune_2/crossdocked_sequence_add.yaml
+python scripts/tokenize_dataset.py \
+  --config config/tokenization/zinc20.yaml
 ```
 
----
+Outputs:
 
-### 4) Load pretrained checkpoints
+```text
+datasets/processed/zinc20/train_zinc20.bin
+datasets/processed/zinc20/val_zinc20.bin
+```
+
+Train from scratch:
+
+```bash
+torchrun --standalone --nproc_per_node=4 scripts/train.py \
+  --config config/training/pretrain/zinc20_sequence_pretrain.yaml
+```
+
+Output checkpoint:
+
+```text
+checkpoints/ckpt_zinc20.pt
+```
+
+### 2) ChEMBL Finetune 1
+
+Place the ChEMBL CSV files configured in `config/tokenization/chembl.yaml`
+under `datasets/raw/chembl/`, then tokenize them:
+
+```bash
+python scripts/tokenize_dataset.py \
+  --config config/tokenization/chembl.yaml
+```
+
+Outputs:
+
+```text
+datasets/processed/chembl/train_chembl.bin
+datasets/processed/chembl/val_chembl.bin
+```
+
+Finetune from the ZINC20 checkpoint:
+
+```bash
+torchrun --standalone --nproc_per_node=4 scripts/train.py \
+  --config config/training/finetune_1/chembl_sequence_finetune_1.yaml
+```
+
+Output checkpoint:
+
+```text
+checkpoints/ckpt_zinc20_chembl.pt
+```
+
+### 3) CrossDocked Finetune 2
+
+CrossDocked does **not** use `.bin` files. Its preprocessing has two steps.
+
+First, run `notebooks/prott5_crossdocked_embeddings_en.ipynb` to generate:
+
+```text
+datasets/processed/crossdocked/per_residue_index.parquet
+datasets/processed/crossdocked/per_residue_pack.npy
+```
+
+If the embeddings are stored in the legacy NPZ format, convert them once:
+
+```bash
+python scripts/convert_embedding_pack.py \
+  --input datasets/processed/crossdocked/per_residue_pack.npz \
+  --output datasets/processed/crossdocked/per_residue_pack.npy
+```
+
+Then add SELFIES and `token_ids` to the embedding index:
+
+```bash
+python scripts/tokenize_dataset.py \
+  --config config/tokenization/crossdocked.yaml
+```
+
+Output:
+
+```text
+datasets/processed/crossdocked/crossdocked_clean_pocket_selfies_with_tokens.parquet
+```
+
+Finetune with pocket residue embeddings:
+
+```bash
+torchrun --standalone --nproc_per_node=4 scripts/train.py \
+  --config config/training/finetune_2/crossdocked_sequence_add.yaml
+```
+
+Output checkpoint:
+
+```text
+checkpoints/ckpt_zinc20_chembl_crossdocked.pt
+```
+
+### 4) Load Pretrained Checkpoints
 
 ```bash
 python -m huggingface_hub download pablovp8/PockLigGPT \
   --repo-type model \
-  --local-dir checkpoints/pockliggpt
+  --local-dir checkpoints
 ```
 
 ---
@@ -105,8 +193,8 @@ Use `run_rl_pipeline.py` as the main entry point for RL:
 
 ```bash
 python3 scripts/run_rl_pipeline.py \
-  --pdbqt-path ./pdbs/4yhj.pdbqt \
-  --center "32.0,28.0,36.0"
+  --pdbqt-path /path/to/receptor.pdbqt \
+  --center "CENTER_X,CENTER_Y,CENTER_Z"
 ```
 
 The pipeline:
@@ -120,18 +208,20 @@ To use a different RL configuration:
 
 ```bash
 python3 scripts/run_rl_pipeline.py \
-  --pdbqt-path ./pdbs/4yhj.pdbqt \
-  --center "32.0,28.0,36.0" \
+  --pdbqt-path /path/to/receptor.pdbqt \
+  --center "CENTER_X,CENTER_Y,CENTER_Z" \
   --config config/rl/sequence_add.yaml
 ```
 
-Additional training options can be forwarded after `--`:
+Conditioning assets can be provided without editing the YAML:
 
 ```bash
 python3 scripts/run_rl_pipeline.py \
-  --pdbqt-path ./pdbs/4yhj.pdbqt \
-  --center "32.0,28.0,36.0" \
-  -- --no-prompt
+  --pdbqt-path /path/to/receptor.pdbqt \
+  --center "CENTER_X,CENTER_Y,CENTER_Z" \
+  -- \
+  --pocket-str-path conditioning/pocket_str.txt \
+  --pocket-emb-path conditioning/pocket_emb.npy
 ```
 
 ---
@@ -148,6 +238,11 @@ Outputs:
 
 * pocket amino-acid sequence
 * ProtT5 residue embeddings (`.npy`)
+
+For batch CrossDocked embedding extraction, use
+`notebooks/prott5_crossdocked_embeddings_en.ipynb`. Keep the source CSV under
+`datasets/raw/crossdocked/` and generated assets under
+`datasets/processed/crossdocked/`.
 
 ---
 
@@ -181,9 +276,9 @@ The receptor path and docking center are set automatically from
 Before running RL with docking reward:
 
 * receptor `.pdbqt` file available
-* datasets available
+* RL SMILES dataset available
 * tokenizer `.pkl` exists
-* embeddings `.npy` generated
+* pocket string and residue embeddings `.npy` generated
 * checkpoint path valid
 * Meeko + Vina installed
 * docking config correctly set

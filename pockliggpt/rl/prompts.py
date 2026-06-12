@@ -40,19 +40,11 @@ def strip_to_ligand(text: str) -> str:
 
 
 class PromptBuilder:
-    def __init__(self, cfg, stoi: Dict[str, int], adapter):
-        self.cfg = cfg
+    def __init__(self, stoi: Dict[str, int], adapter):
         self.stoi = stoi
         self.adapter = adapter
-        self.legacy_exact = bool(cfg["rl"].get("legacy_exact", False))
+        self.prompt_size = self.adapter.get_prompt_size(stoi)
 
-        if self.legacy_exact:
-            self.prompt_size = int(cfg["prompt"]["prompt_size"])
-        else:
-            prefix_tokens = self.adapter.build_prompt_prefix(self.stoi)
-            initial_ligand_tokens = int(cfg["prompt"].get("initial_ligand_tokens", 7))
-            self.prompt_size = len(prefix_tokens) + 1 + initial_ligand_tokens
-        
     def build_prompt_tokens(self, smiles: str) -> Optional[List[int]]:
         smiles = smiles.strip()
         if not smiles:
@@ -71,9 +63,6 @@ class PromptBuilder:
                 f"prompt_size={self.prompt_size} demasiado pequeño para el prefijo "
                 f"(mínimo requerido: {min_required})"
             )
-
-        if not self.legacy_exact and any(token not in self.stoi for token in selfie_tokens):
-            return None
 
         ligand_tokens = [self.stoi["<LIGAND>"]]
         ligand_tokens.extend(

@@ -38,17 +38,6 @@ def main() -> None:
     args = parse_args()
     extra_args = normalize_extra_args(args.extra_args)
 
-    run_cmd(
-        [
-            sys.executable,
-            "sample_for_pdb.py",
-            "--pdbqt_path",
-            args.pdbqt_path,
-            "--center",
-            args.center,
-        ]
-    )
-
     train_cmd = [
         sys.executable,
         "scripts/train_ppo.py",

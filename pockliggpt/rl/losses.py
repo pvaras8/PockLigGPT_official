@@ -41,16 +41,7 @@ def gae(
     return advantages, returns
 
 
-def normalize_advantages(advantages: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    if advantages.numel() == 0:
-        return torch.zeros_like(advantages)
-
-    mean = advantages.mean()
-    std = advantages.std(unbiased=False).clamp_min(1e-8)
-    return (advantages - mean) / std
-
-
-def normalize_advantages_legacy(advantages: torch.Tensor) -> torch.Tensor:
+def normalize_advantages(advantages: torch.Tensor) -> torch.Tensor:
     return (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
 

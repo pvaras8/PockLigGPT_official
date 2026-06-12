@@ -6,7 +6,6 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 import torch
-from omegaconf import OmegaConf
 from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
 
@@ -15,7 +14,6 @@ from .losses import (
     gae,
     logprobs_from_logits,
     normalize_advantages,
-    normalize_advantages_legacy,
     ppo_loss,
 )
 from .model_adapters import get_torch_dtype
@@ -53,7 +51,6 @@ class RolloutCreator:
         reward_runner: RewardRunner,
         ref_model: PPOAgent,
     ):
-        self.cfg = cfg
         self.stoi = stoi
         self.decode = decode_fn
         self.reward_runner = reward_runner
@@ -63,7 +60,6 @@ class RolloutCreator:
         self.ref_device = cfg["system"]["ref_device"]
         self.prompt_batch_size = int(cfg["rl"]["prompt_batch_size"])
         self.kl_coef = float(cfg["rl"]["kl_coef"])
-        self.legacy_exact = bool(cfg["rl"].get("legacy_exact", False))
         self.save_trajectories = bool(cfg["output"].get("save_trajectories", False))
 
         self.trajectories_dir = cfg["output"].get("trajectories_dir", None)
@@ -82,7 +78,7 @@ class RolloutCreator:
             return
 
         output_file = os.path.join(self.trajectories_dir, f"trajectories_{epoch}.txt")
-        with open(output_file, "w") as f:
+        with open(output_file, "a") as f:
             for traj in trajectories:
                 f.write(" ".join(map(str, traj.tolist())) + "\n")
 
@@ -133,94 +129,29 @@ class RolloutCreator:
             texts = [self.decode(seq.tolist()) for seq in trajectories]
             texts = [strip_to_ligand(t) for t in texts]
             scores = self.reward_runner(texts, epoch)
-
-            if not self.legacy_exact and len(scores) != n_trajectories:
+            if len(scores) != n_trajectories:
                 raise RuntimeError(
-                    f"RewardRunner devolvió {len(scores)} scores pero esperaba {n_trajectories}"
+                    f"RewardRunner devolvió {len(scores)} scores; "
+                    f"se esperaban {n_trajectories}"
                 )
+            all_scores.extend(float(score) for score in scores)
 
             rewards = -self.kl_coef * (logprobs - ref_logprobs)
 
-            if self.legacy_exact:
-                response_tensors = trajectories[:, query_tensors.shape[1] :]
-                truncated_values = [
-                    values[i, start : ends[i]].clone() for i in range(n_trajectories)
-                ]
-                truncated_logprobs = [
-                    logprobs[i, start : ends[i]].clone() for i in range(n_trajectories)
-                ]
-                all_rewards = [
-                    rewards[i, start : ends[i]].clone() for i in range(n_trajectories)
-                ]
-
-                for i in range(n_trajectories):
-                    all_rewards[i][-1] += scores[i]
-
-                truncated_values_padded = pad_sequence(
-                    truncated_values,
-                    batch_first=True,
-                    padding_value=float("nan"),
-                )
-                truncated_logprobs_padded = pad_sequence(
-                    truncated_logprobs,
-                    batch_first=True,
-                    padding_value=float("nan"),
-                )
-                all_rewards_padded = pad_sequence(
-                    all_rewards,
-                    batch_first=True,
-                    padding_value=float("nan"),
-                )
-
-                new_rollouts = [
-                    PPORLElement(
-                        query_tensor=query_tensors[i],
-                        response_tensor=response_tensors[i],
-                        logprobs=truncated_logprobs_padded[i],
-                        values=truncated_values_padded[i],
-                        rewards=all_rewards_padded[i],
-                    )
-                    for i in range(n_trajectories)
-                ]
-                all_rollouts.extend(new_rollouts)
-                continue
-
-            valid_indices = []
-            truncated_responses = []
-            truncated_values = []
-            truncated_logprobs = []
-            all_rewards = []
+            response_tensors = trajectories[:, query_tensors.shape[1] :]
+            truncated_values = [
+                values[i, start : ends[i]].clone() for i in range(n_trajectories)
+            ]
+            truncated_logprobs = [
+                logprobs[i, start : ends[i]].clone() for i in range(n_trajectories)
+            ]
+            all_rewards = [
+                rewards[i, start : ends[i]].clone() for i in range(n_trajectories)
+            ]
 
             for i in range(n_trajectories):
-                seq_end = int(ends[i].item())
-                seq_len = seq_end - start
+                all_rewards[i][-1] += scores[i]
 
-                if seq_len <= 0:
-                    continue
-
-                valid_indices.append(i)
-
-                traj_response = trajectories[i, start + 1 : seq_end + 1].clone()
-                traj_values = values[i, start:seq_end].clone()
-                traj_logprobs = logprobs[i, start:seq_end].clone()
-                traj_rewards = rewards[i, start:seq_end].clone()
-
-                traj_rewards[-1] += scores[i]
-
-                truncated_responses.append(traj_response)
-                truncated_values.append(traj_values)
-                truncated_logprobs.append(traj_logprobs)
-                all_rewards.append(traj_rewards)
-                all_scores.append(scores[i])
-
-            if len(valid_indices) == 0:
-                continue
-
-            truncated_responses_padded = pad_sequence(
-                truncated_responses,
-                batch_first=True,
-                padding_value=self.stoi["<PAD>"],
-            )
             truncated_values_padded = pad_sequence(
                 truncated_values,
                 batch_first=True,
@@ -239,24 +170,20 @@ class RolloutCreator:
 
             new_rollouts = [
                 PPORLElement(
-                    query_tensor=query_tensors[i].detach().cpu(),
-                    response_tensor=truncated_responses_padded[j].detach().cpu(),
-                    logprobs=truncated_logprobs_padded[j].detach().cpu(),
-                    values=truncated_values_padded[j].detach().cpu(),
-                    rewards=all_rewards_padded[j].detach().cpu(),
+                    query_tensor=query_tensors[i],
+                    response_tensor=response_tensors[i],
+                    logprobs=truncated_logprobs_padded[i],
+                    values=truncated_values_padded[i],
+                    rewards=all_rewards_padded[i],
                 )
-                for j, i in enumerate(valid_indices)
+                for i in range(n_trajectories)
             ]
             all_rollouts.extend(new_rollouts)
 
-        if self.legacy_exact:
-            mean_score = float(torch.tensor(scores).mean().detach().cpu().item())
-            return all_rollouts, mean_score
-
-        rollouts_out = all_rollouts[:num_rollouts]
-        scores_out = all_scores[: len(rollouts_out)]
-        mean_score = float(np.mean(scores_out)) if len(scores_out) > 0 else 0.0
-        return rollouts_out, mean_score
+        all_rollouts = all_rollouts[:num_rollouts]
+        all_scores = all_scores[:num_rollouts]
+        mean_score = float(np.mean(all_scores))
+        return all_rollouts, mean_score
 
 
 def compute_loss(cfg, batch, model: PPOAgent, stoi: Dict[str, int], device: str):
@@ -281,10 +208,7 @@ def compute_loss(cfg, batch, model: PPOAgent, stoi: Dict[str, int], device: str)
         gamma=float(cfg["rl"]["gamma"]),
         lam=float(cfg["rl"]["lam"]),
     )
-    if bool(cfg["rl"].get("legacy_exact", False)):
-        advantages = normalize_advantages_legacy(advantages)
-    else:
-        advantages = normalize_advantages(advantages, mask)
+    advantages = normalize_advantages(advantages)
 
     trajectories = torch.hstack([query_tensors, response_tensors])
     padding_mask = trajectories.eq(stoi["<PAD>"])
@@ -312,26 +236,12 @@ def compute_loss(cfg, batch, model: PPOAgent, stoi: Dict[str, int], device: str)
         vf_coef=float(cfg["rl"]["vf_coef"]),
     )
 
-    if bool(cfg["rl"].get("legacy_exact", False)):
-        mean_last_reward = old_rewards[:, -1].mean().item()
-    else:
-        lengths = mask.sum(dim=1).long().clamp_min(1)
-        last_idx = (lengths - 1).unsqueeze(1)
-        last_rewards = old_rewards_masked.gather(1, last_idx).squeeze(1)
-        mean_last_reward = last_rewards.mean().item()
-
-    return loss, stats, mean_last_reward
+    return loss, stats
 
 
-def save_loss_stats(loss_history_file: str, stats: dict, legacy_exact: bool = False):
+def save_loss_stats(loss_history_file: str, stats: dict):
     with open(loss_history_file, "a") as f:
-        if legacy_exact:
-            f.write(f"{stats['loss']},{stats['pg_loss']},{stats['vf_loss']}\n")
-        else:
-            f.write(
-                f"{stats['loss']},{stats['pg_loss']},{stats['vf_loss']},"
-                f"{stats['pg_clipfrac']}\n"
-            )
+        f.write(f"{stats['loss']},{stats['pg_loss']},{stats['vf_loss']}\n")
 
 
 def run_ppo_training(cfg, adapter):
@@ -349,18 +259,16 @@ def run_ppo_training(cfg, adapter):
     decode = lambda ids: "".join([itos.get(i, "") for i in ids if i in itos])
 
     smiles_df = pd.read_csv(cfg["data"]["smiles_csv"])
-    if bool(cfg["rl"].get("legacy_exact", False)):
-        smiles_list = smiles_df[cfg["data"]["smiles_column"]].str.strip().tolist()
-    else:
-        smiles_list = (
-            smiles_df[cfg["data"]["smiles_column"]]
-            .astype(str)
-            .str.strip()
-            .tolist()
-        )
+    smiles_list = smiles_df[cfg["data"]["smiles_column"]].str.strip().tolist()
 
-    prompt_builder = PromptBuilder(cfg, stoi, adapter)
+    prompt_builder = PromptBuilder(stoi, adapter)
     prompt_dataset = PromptDataset(smiles_list, prompt_builder)
+    prompt_batch_size = int(cfg["rl"]["prompt_batch_size"])
+    if len(prompt_dataset) < prompt_batch_size:
+        raise ValueError(
+            f"Solo hay {len(prompt_dataset)} prompts válidos, pero "
+            f"rl.prompt_batch_size={prompt_batch_size}"
+        )
 
     ref_model = PPOAgent(
         cfg=cfg,
@@ -400,7 +308,8 @@ def run_ppo_training(cfg, adapter):
     num_rollouts = int(cfg["rl"]["num_rollouts"])
     epochs = int(cfg["rl"]["epochs"])
 
-    total_steps = (num_rollouts // batch_size) * ppo_epochs * epochs
+    batches_per_epoch = (num_rollouts + batch_size - 1) // batch_size
+    total_steps = batches_per_epoch * ppo_epochs * epochs
     tbar = tqdm(initial=0, total=total_steps)
 
     ckpt_ppo_path = cfg["output"]["ppo_ckpt_path"]
@@ -426,7 +335,7 @@ def run_ppo_training(cfg, adapter):
 
         for batch in train_dataloader:
             for _ in range(ppo_epochs):
-                loss, stats, reward = compute_loss(
+                loss, stats = compute_loss(
                     cfg=cfg,
                     batch=batch,
                     model=model,
@@ -435,15 +344,8 @@ def run_ppo_training(cfg, adapter):
                 )
                 loss.backward()
                 opt.step()
-                if bool(cfg["rl"].get("legacy_exact", False)):
-                    opt.zero_grad()
-                else:
-                    opt.zero_grad(set_to_none=True)
-                save_loss_stats(
-                    loss_history_file,
-                    stats,
-                    legacy_exact=bool(cfg["rl"].get("legacy_exact", False)),
-                )
+                opt.zero_grad()
+                save_loss_stats(loss_history_file, stats)
                 tbar.update()
 
         all_scores.append(score)
@@ -458,8 +360,6 @@ def run_ppo_training(cfg, adapter):
                 "optimizer_state_dict": opt.state_dict(),
                 "all_scores": all_scores,
             }
-            if not bool(cfg["rl"].get("legacy_exact", False)):
-                checkpoint_ppo["config"] = OmegaConf.to_container(cfg, resolve=True)
             torch.save(checkpoint_ppo, ckpt_ppo_path)
             print(
                 f"✅ Nuevo mejor modelo guardado en {ckpt_ppo_path} "

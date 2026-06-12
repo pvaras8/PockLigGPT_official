@@ -1,7 +1,6 @@
 import argparse
 import os
 from pathlib import Path
-from typing import Union
 
 import yaml
 from sklearn.model_selection import train_test_split
@@ -32,10 +31,6 @@ def load_config(config_path: str) -> dict:
         return yaml.safe_load(f)
 
 
-def ensure_parent_dir(path: Union[str, Path]):
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-
-
 def flatten_token_lists(token_lists):
     return [token for seq in token_lists for token in seq]
 
@@ -43,9 +38,9 @@ def flatten_token_lists(token_lists):
 def get_required_meta_path(tokenizer_cfg: dict) -> str:
     meta_path = tokenizer_cfg.get("meta_path")
     if not meta_path:
-        raise ValueError("tokenizer.meta_path es obligatorio.")
+        raise ValueError("tokenizer.meta_path is required")
     if not os.path.exists(meta_path):
-        raise FileNotFoundError(f"No existe meta_path: {meta_path}")
+        raise FileNotFoundError(f"meta_path does not exist: {meta_path}")
     return meta_path
 
 
@@ -62,15 +57,17 @@ def tokenize_selfies_dataset(config: dict):
     elif dataset_type == "zinc20":
         smiles = load_zinc_smiles(dataset_cfg["files"])
     else:
-        raise ValueError(f"Dataset type no soportado para SelfiesTokenizer: {dataset_type}")
+        raise ValueError(
+            f"Unsupported dataset type for SelfiesTokenizer: {dataset_type}"
+        )
 
-    print(f"SMILES cargados: {len(smiles):,}")
+    print(f"Loaded SMILES: {len(smiles):,}")
 
     data = smiles_to_selfies(smiles)
     if data.empty:
-        raise ValueError("No se pudieron convertir SMILES válidos a SELFIES.")
+        raise ValueError("No valid SMILES could be converted to SELFIES")
 
-    print(f"SELFIES válidas: {len(data):,}")
+    print(f"Valid SELFIES: {len(data):,}")
 
     meta_path = get_required_meta_path(tokenizer_cfg)
     tokenizer = SelfiesTokenizer(meta_path=meta_path)
@@ -78,7 +75,7 @@ def tokenize_selfies_dataset(config: dict):
     max_length = int(tokenizer_cfg.get("max_length", 156))
     data = tokenizer.filter_valid_selfies(data, max_len=max_length)
 
-    print(f"SELFIES tras filtrado por longitud: {len(data):,}")
+    print(f"SELFIES after length filtering: {len(data):,}")
     print(f"Vocab size: {tokenizer.vocab_size:,}")
 
     train_df, val_df = train_test_split(
@@ -99,30 +96,36 @@ def tokenize_selfies_dataset(config: dict):
     save_to_bin_file(flatten_token_lists(train_ids), train_path)
     save_to_bin_file(flatten_token_lists(val_ids), val_path)
 
-    print(f"Train guardado en: {train_path}")
-    print(f"Val guardado en:   {val_path}")
+    print(f"Training data saved to:   {train_path}")
+    print(f"Validation data saved to: {val_path}")
 
 
 def tokenize_crossdocked_dataset(config: dict):
     dataset_cfg = config["dataset"]
     tokenizer_cfg = config["tokenizer"]
     output_cfg = config["output"]
-    split_cfg = config["split"]
-
     pairs = load_crossdocked(dataset_cfg["file"])
     if pairs.empty:
-        raise ValueError("No se encontraron pares pocket/smiles válidos.")
+        raise ValueError("No valid CrossDocked pocket/SMILES pairs were found")
 
-    print(f"Pares pocket/smiles cargados: {len(pairs):,}")
+    required_metadata = {"pocket_id", "start", "length", "seq_pocket"}
+    missing_metadata = required_metadata - set(pairs.columns)
+    if missing_metadata:
+        raise ValueError(
+            "CrossDocked finetuning requires an embedding index with columns: "
+            f"{sorted(required_metadata)}. Missing: {sorted(missing_metadata)}"
+        )
+
+    print(f"Loaded pocket/SMILES pairs: {len(pairs):,}")
 
     data_sm = smiles_to_selfies(pairs["smiles"].tolist())
     if data_sm.empty:
-        raise ValueError("No se pudieron convertir SMILES válidos a SELFIES en CrossDocked.")
+        raise ValueError("No valid CrossDocked SMILES could be converted to SELFIES")
 
     pairs = pairs.loc[data_sm.index].copy()
     pairs["selfies"] = data_sm["selfies"].values
 
-    print(f"Pairs con SELFIES válidas: {len(pairs):,}")
+    print(f"Pairs with valid SELFIES: {len(pairs):,}")
 
     meta_path = get_required_meta_path(tokenizer_cfg)
     tokenizer = PocketLigandTokenizer(meta_path=meta_path)
@@ -130,35 +133,20 @@ def tokenize_crossdocked_dataset(config: dict):
     max_length = int(tokenizer_cfg.get("max_length", 156))
     pairs = tokenizer.filter_valid_pairs(pairs, max_sequence_length=max_length)
 
-    print(f"Pares tras filtrado por longitud: {len(pairs):,}")
+    print(f"Pairs after length filtering: {len(pairs):,}")
     print(f"Vocab size: {tokenizer.vocab_size:,}")
 
-    train_df, val_df = train_test_split(
-        pairs,
-        test_size=float(split_cfg.get("val_fraction", 0.1)),
-        random_state=int(split_cfg.get("random_state", 42)),
-    )
-
-    train_ids = [
+    pairs["token_ids"] = [
         tokenizer.tokenize_pair(p, s, max_len=max_length)
-        for p, s in zip(train_df["pocket"], train_df["selfies"])
-    ]
-    val_ids = [
-        tokenizer.tokenize_pair(p, s, max_len=max_length)
-        for p, s in zip(val_df["pocket"], val_df["selfies"])
+        for p, s in zip(pairs["pocket"], pairs["selfies"])
     ]
 
     output_dir = Path(output_cfg["dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / output_cfg["file"]
+    pairs.to_parquet(output_path, index=False)
 
-    train_path = output_dir / output_cfg["train_file"]
-    val_path = output_dir / output_cfg["val_file"]
-
-    save_to_bin_file(flatten_token_lists(train_ids), train_path)
-    save_to_bin_file(flatten_token_lists(val_ids), val_path)
-
-    print(f"Train guardado en: {train_path}")
-    print(f"Val guardado en:   {val_path}")
+    print(f"CrossDocked Parquet saved to: {output_path}")
 
 
 def main():

@@ -10,7 +10,9 @@ dependencies:
   # Core
   - numpy
   - pandas
+  - pyarrow
   - pyyaml
+  - scikit-learn
   - tqdm
   - requests
   - scipy
@@ -34,4 +36,6 @@ dependencies:
       - selfies
       - transformers
       - huggingface_hub
+      - meeko
+      - vina
       - -e .

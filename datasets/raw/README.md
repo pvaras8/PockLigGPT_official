@@ -5,11 +5,12 @@ This folder should contain the original molecular datasets before preprocessing.
 Expected structure:
 
 - `chembl/`: filtered ChEMBL CSV files
-- `crossdocked/`: protein-ligand pairs or processed CrossDocked data
+- `crossdocked/`: original CrossDocked tables, including
+  `merged_pocket_smiles.csv`
 - `zinc20/`: ZINC dataset files
 - `zinc250k/`: ZINC-250K CSV files used in RL/training workflows
 
-⚠️ These files are NOT included in the repository.
+These files are not included in the repository.
 
 Users must:
 - download them manually, or

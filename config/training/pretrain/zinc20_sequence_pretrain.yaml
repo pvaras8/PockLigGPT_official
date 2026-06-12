@@ -1,6 +1,6 @@
 experiment:
-  name: chembl_sequence_finetune_1
-  stage: finetune_1
+  name: zinc20_sequence_pretrain
+  stage: pretrain
 
 model:
   n_layer: 24
@@ -11,39 +11,39 @@ model:
 
 data:
   loader_type: sequence
-  dataset: datasets/processed/chembl
+  dataset: datasets/processed/zinc20
   block_size: 156
   batch_size: 16
   meta_path: datasets/tokenizer/meta_chembl_db_aa_2_proto4.pkl
-  train_bin: datasets/processed/chembl/train_chembl.bin
-  val_bin: datasets/processed/chembl/val_chembl.bin
+  train_bin: datasets/processed/zinc20/train_zinc20.bin
+  val_bin: datasets/processed/zinc20/val_zinc20.bin
   pad_token_id: 0
 
 training:
-  init_from: resume
-  init_ckpt_path: checkpoints/ckpt_zinc20.pt
+  init_from: scratch
+  init_ckpt_path: null
   target_tokens: 524288
   num_gpus: 4
-  learning_rate: 5.0e-6
-  min_lr: 5.0e-7
-  weight_decay: 0.01
+  learning_rate: 6.0e-4
+  min_lr: 6.0e-5
+  weight_decay: 0.1
   beta1: 0.9
   beta2: 0.95
   grad_clip: 1.0
-  max_iters: 1200
-  lr_decay_iters: 1200
-  warmup_iters: 120
+  max_iters: 600000
+  lr_decay_iters: 600000
+  warmup_iters: 2000
   decay_lr: true
 
 eval:
-  eval_interval: 100
+  eval_interval: 2000
   eval_iters: 200
   eval_only: false
   always_save_checkpoint: false
 
 logging:
   out_dir: checkpoints
-  checkpoint_name: ckpt_zinc20_chembl.pt
+  checkpoint_name: ckpt_zinc20.pt
   log_interval: 20
 
 system:

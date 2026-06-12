@@ -4,9 +4,9 @@ This folder contains all data-related assets used in PockLigGPT.
 
 The structure is divided into three main parts:
 
-- `raw/`: original datasets (e.g., ChEMBL, CrossDocked, ZINC20)
-- `processed/`: tokenized datasets used for training (`.bin`)
-- `tokenizers/`: vocabulary files (`meta.pkl`) used by SELFIES tokenizers
+- `raw/`: original datasets (for example ChEMBL, CrossDocked, and ZINC20)
+- `processed/`: generated training datasets and embedding indexes
+- `tokenizer/`: vocabulary files used by the molecular tokenizers
 
-⚠️ Note: Data files are not included in this repository due to size constraints.
-They must be generated or downloaded separately.
+Large data files are not committed to Git. Generate them with the preprocessing
+notebooks/scripts or distribute them through an external dataset host.

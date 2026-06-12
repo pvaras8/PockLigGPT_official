@@ -17,7 +17,6 @@ PROVIDER_MAP = {
 
 class RewardRunner:
     def __init__(self, cfg):
-        self.cfg = cfg
         self.reward_cfg = cfg["reward"]
 
         self.combiner_name = self.reward_cfg["combiner"]
@@ -38,7 +37,7 @@ class RewardRunner:
 
             provider_cls = PROVIDER_MAP[provider_name]
             provider_cfg = self.reward_cfg.get(provider_name, {})
-            self.providers.append(provider_cls(cfg, provider_cfg))
+            self.providers.append(provider_cls(provider_cfg))
 
     def _decode_selfies(self, molecules_selfies: List[str]) -> List[Optional[str]]:
         molecules_smiles = []
@@ -108,30 +107,25 @@ class RewardRunner:
         valid_indices = [idx for idx, _ in valid_pairs]
         valid_smiles = [smi for _, smi in valid_pairs]
 
-        try:
-            provider_dfs = [provider.compute(valid_smiles, epoch) for provider in self.providers]
-            df_temp = self._merge_provider_outputs(provider_dfs)
-            df_temp = self._apply_combiner(df_temp)
-            self._save_epoch_results(df_temp, epoch)
+        provider_dfs = [provider.compute(valid_smiles, epoch) for provider in self.providers]
+        df_temp = self._merge_provider_outputs(provider_dfs)
+        df_temp = self._apply_combiner(df_temp)
+        self._save_epoch_results(df_temp, epoch)
 
-            valid_rewards = (
-                df_temp.sort_values("input_idx")["Fitness"]
-                .fillna(0.0)
-                .astype(float)
-                .tolist()
+        valid_rewards = (
+            df_temp.sort_values("input_idx")["Fitness"]
+            .fillna(0.0)
+            .astype(float)
+            .tolist()
+        )
+
+        if len(valid_rewards) != len(valid_smiles):
+            raise RuntimeError(
+                f"Longitud de rewards válidas incorrecta: {len(valid_rewards)} vs {len(valid_smiles)}"
             )
 
-            if len(valid_rewards) != len(valid_smiles):
-                raise RuntimeError(
-                    f"Longitud de rewards válidas incorrecta: {len(valid_rewards)} vs {len(valid_smiles)}"
-                )
+        rewards = [0.0] * len(molecules_selfies)
+        for original_idx, reward in zip(valid_indices, valid_rewards):
+            rewards[original_idx] = float(reward)
 
-            rewards = [0.0] * len(molecules_selfies)
-            for original_idx, reward in zip(valid_indices, valid_rewards):
-                rewards[original_idx] = float(reward)
-
-            return rewards
-
-        except Exception as e:
-            print(f"Error durante reward_fn: {e}")
-            return [0.0] * len(molecules_selfies)
+        return rewards

@@ -16,7 +16,6 @@ class PPOAgent(nn.Module):
         dtype: torch.dtype,
     ):
         super().__init__()
-        self.cfg = cfg
         self.adapter = adapter
         self.stoi = stoi
         self.trainable = trainable
@@ -25,18 +24,13 @@ class PPOAgent(nn.Module):
 
         generation_cfg = cfg["generation"]
         seq_length = int(generation_cfg["seq_length"])
-
-        if bool(cfg["rl"].get("legacy_exact", False)):
-            max_new_tokens = int(generation_cfg["max_new_tokens"])
-        else:
-            prefix_tokens = self.adapter.build_prompt_prefix(stoi)
-            initial_ligand_tokens = int(cfg["prompt"].get("initial_ligand_tokens", 7))
-            prompt_size = len(prefix_tokens) + 1 + initial_ligand_tokens
-            max_new_tokens = seq_length - prompt_size
+        prompt_size = self.adapter.get_prompt_size(stoi)
+        max_new_tokens = seq_length - prompt_size
 
         if max_new_tokens <= 0:
             raise ValueError(
-                f"generation.max_new_tokens debe ser positivo, recibido {max_new_tokens}"
+                f"generation.seq_length={seq_length} debe ser mayor que "
+                f"el prompt calculado ({prompt_size} tokens)"
             )
 
         self.generate_kwargs = {
@@ -54,7 +48,7 @@ class PPOAgent(nn.Module):
         self._validate_checkpoint(checkpoint, model_checkpoint_path)
 
         gptconf = GPTConfig(**checkpoint["model_args"])
-        gptconf.attention_output_dir = cfg.get("output", {}).get("run_dir")
+        gptconf.attention_output_dir = cfg.get("output", {}).get("attention_dir")
         self.model = GPT(gptconf).to(device=device, dtype=dtype)
 
         cleaned_state_dict = self._clean_state_dict(checkpoint["model"])
@@ -114,8 +108,6 @@ class PPOAgent(nn.Module):
 
     def generate(self, input_ids: torch.Tensor, epoch: int) -> torch.Tensor:
         extra_kwargs = self._extra_model_kwargs(input_ids)
-        if bool(self.cfg["rl"].get("legacy_exact", False)):
-            extra_kwargs["legacy_exact"] = True
         return self.model.generate(
             idx=input_ids,
             epoch=epoch,

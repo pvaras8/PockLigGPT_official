@@ -37,6 +37,7 @@ nohup.out
 # =========================
 # Modelos / checkpoints
 # =========================
+checkpoints/
 *.pt
 *.pth
 *.ckpt
@@ -71,8 +72,8 @@ cache/
 *.pdbqt
 *.dlg
 
-# Permite versionar receptores de ejemplo en pdbs/
-!pdbs/*.pdbqt
+# Permite versionar receptores de ejemplo en pdbqts/
+!pdbqts/*.pdbqt
 
 # OJO:
 # normalmente NO ignores todos los .pdb
@@ -98,6 +99,8 @@ plots/
 # =========================
 # Archivos de experimentos masivos
 # =========================
+experiments/*
+!experiments/README.md
 trajectories_*.txt
 attention_mean*.txt
 loss_history*.txt
@@ -139,6 +142,3 @@ dist/
 htmlcov/
 
 *.smi
-
-experiments/rl/docking/
-

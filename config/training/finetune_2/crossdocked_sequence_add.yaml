@@ -3,7 +3,6 @@ experiment:
   stage: finetune_2
 
 model:
-  type: sequence_add
   n_layer: 24
   n_head: 16
   n_embd: 1024
@@ -17,12 +16,16 @@ data:
   batch_size: 16
   meta_path: datasets/tokenizer/meta_chembl_db_aa_2_proto4.pkl
   parquet_path: datasets/processed/crossdocked/crossdocked_clean_pocket_selfies_with_tokens.parquet
-  pocket_npz_path: datasets/processed/crossdocked/per_residue_pack.npz
+  pocket_embeddings_path: datasets/processed/crossdocked/per_residue_pack.npy
   pad_token_id: 0
+  aa_start: 2
+  pocket_embedding_dim: 1024
+  val_fraction: 0.1
+  split_seed: 42
 
 training:
   init_from: resume
-  init_ckpt_path: checkpoints/ckpt_zink_chembl.pt
+  init_ckpt_path: checkpoints/ckpt_zinc20_chembl.pt
   target_tokens: 524288
   num_gpus: 4
   learning_rate: 5.0e-6
@@ -44,7 +47,7 @@ eval:
 
 logging:
   out_dir: checkpoints
-  checkpoint_name: ckpt_zink_chembl_sequence_add.pt
+  checkpoint_name: ckpt_zinc20_chembl_crossdocked.pt
   log_interval: 20
 
 system:

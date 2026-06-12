@@ -1,7 +1,6 @@
 import os
 import math
 import time
-import pickle
 import argparse
 from contextlib import nullcontext
 
@@ -117,7 +116,7 @@ def main():
     # -------------------
     # model
     # -------------------
-    GPTConfig, GPT = build_model_classes(cfg["model"]["type"])
+    GPTConfig, GPT = build_model_classes()
 
     model_args = dict(
         n_layer=n_layer,

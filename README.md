@@ -1,6 +1,6 @@
 # PockLigGPT
 
-PockLigGPT is a pocket-conditioned molecular generation framework based on GPT architectures and reinforcement learning (RL) for structure-based drug design.
+PockLigGPT is a molecular generation framework based on GPT architectures and reinforcement learning (RL) for sequence-based conditioned design.
 
 ---
 
@@ -98,7 +98,7 @@ ZINC20 pretraining
 ChEMBL finetune 1
     ↓ ckpt_zinc20_chembl.pt
 CrossDocked finetune 2
-    ↓ ckpt_zinc20_chembl_crossdocked.pt
+    ↓ ckpt_zinc20_chembl_cross_sequence_add.pt
 Reinforcement learning
 ```
 

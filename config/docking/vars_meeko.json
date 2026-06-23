@@ -12,5 +12,21 @@
   "max_mw": 500.0,
   "embed_seed": 42,
   "vina_seed": 12345,
-  "sf_name": "vina"
+  "sf_name": "vina",
+  "affinity": {
+    "enabled": true,
+    "model": "svr_fp_pose",
+    "conda_env": "pockliggpt_affinity_svr",
+    "activation": "conda_run",
+    "conda_bin": "conda",
+    "project_dir": "Affinity_Prediction_Model",
+    "script": "Affinity_Prediction_Model/predict_affinity.py",
+    "svr_model": "checkpoints/svr_affinity_fp_pose_model.joblib",
+    "svr_meta": "checkpoints/svr_affinity_fp_pose_metadata.json",
+    "score_column": "predicted_affinity_kcal_mol",
+    "selection": "min",
+    "obabel_bin": "obabel",
+    "obabel_conda_env": "pockliggpt_affinity_svr",
+    "fallback_to_vina": false
+  }
 }

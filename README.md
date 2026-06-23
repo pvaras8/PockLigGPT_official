@@ -300,6 +300,11 @@ Set these fields for your environment:
 * `exhaustiveness`
 * `n_poses`
 * `fallback_score`
+* `affinity.enabled`
+* `affinity.conda_env`
+* `affinity.project_dir`
+* `affinity.obabel_bin`
+* `affinity.obabel_conda_env`
 
 The receptor path and docking center are set automatically from
 `run_rl_pipeline.py`. Configure only the docking box dimensions manually:
@@ -318,6 +323,8 @@ Before running RL with docking reward:
 * pocket string and residue embeddings `.npy` generated
 * checkpoint path valid
 * Meeko + Vina installed
+* OpenBabel available as `obabel` in `affinity.obabel_conda_env` for mol2 conversion when affinity prediction is enabled
+* affinity model checkpoints available under `Affinity_Prediction_Model/checkpoints/`
 * docking config correctly set
 
 ---

@@ -22,6 +22,7 @@ class BaseModelAdapter:
     def __init__(self, cfg):
         self.prompt_cfg = cfg["prompt"]
         self.cond_cfg = cfg["conditioning"]
+        self.conditioning_enabled = bool(self.cond_cfg.get("enabled", True))
         self._pocket_template_cache: Dict[Tuple[str, str, int, int], torch.Tensor] = {}
 
     def _resolve_pocket_str(self) -> str:
@@ -141,6 +142,9 @@ class BaseModelAdapter:
 
 class SequenceAddAdapter(BaseModelAdapter):
     def build_prompt_prefix(self, stoi: Dict[str, int]):
+        if not self.conditioning_enabled:
+            return [stoi["<SOS>"]]
+
         pocket_str = self._resolve_pocket_str()
         if not pocket_str:
             raise ValueError(
@@ -151,6 +155,9 @@ class SequenceAddAdapter(BaseModelAdapter):
         return [stoi["<SOS>"]] + pocket_tokens
 
     def build_model_kwargs(self, input_ids, device, dtype, block_size=None, n_embd=None):
+        if not self.conditioning_enabled:
+            return {}
+
         pocket_emb_path = self._resolve_pocket_emb_path()
         if not pocket_emb_path:
             raise ValueError("Falta conditioning.pocket_emb_path")

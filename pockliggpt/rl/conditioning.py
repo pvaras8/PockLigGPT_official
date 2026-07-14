@@ -8,6 +8,10 @@ def _nonempty_text(value) -> str:
 
 def validate_conditioning_assets(cfg: Mapping) -> None:
     conditioning_cfg = cfg.get("conditioning", {})
+
+    if not bool(conditioning_cfg.get("enabled", True)):
+        return
+
     pocket_str = _nonempty_text(conditioning_cfg.get("pocket_str", ""))
     pocket_str_path = _nonempty_text(
         conditioning_cfg.get("pocket_str_path", "")

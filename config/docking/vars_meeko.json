@@ -14,7 +14,7 @@
   "vina_seed": 12345,
   "sf_name": "vina",
   "affinity": {
-    "enabled": true,
+    "enabled": false,
     "model": "svr_fp_pose",
     "conda_env": "pockliggpt_affinity_svr",
     "activation": "conda_run",

@@ -1,7 +1,28 @@
 #!/usr/bin/env python3
 import argparse
+import re
 import subprocess
 import sys
+
+
+def _fix_negative_option_values(argv: list[str]) -> list[str]:
+    """Replace '--opt -value' with '--opt=-value' so argparse doesn't treat
+    negative numbers as unknown flags."""
+    result = []
+    i = 0
+    while i < len(argv):
+        token = argv[i]
+        if (
+            token.startswith("--")
+            and i + 1 < len(argv)
+            and re.match(r"^-\d", argv[i + 1])
+        ):
+            result.append(f"{token}={argv[i + 1]}")
+            i += 2
+        else:
+            result.append(token)
+            i += 1
+    return result
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,7 +41,7 @@ def parse_args() -> argparse.Namespace:
         nargs=argparse.REMAINDER,
         help="Extra args forwarded to scripts/train_ppo.py (prefix with --)",
     )
-    return parser.parse_args()
+    return parser.parse_args(_fix_negative_option_values(sys.argv[1:]))
 
 
 def run_cmd(cmd: list[str]) -> None:

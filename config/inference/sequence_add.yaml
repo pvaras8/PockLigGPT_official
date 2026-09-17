@@ -1,0 +1,40 @@
+# Inferencia pocket-conditioned con un modelo optimizado mediante PPO.
+
+model:
+  # Checkpoint de pretraining/finetuning que contiene model_args.
+  base_checkpoint_path: "checkpoints/ckpt_zink_chembl.pt"
+  # Pesos obtenidos durante RL.
+  ppo_checkpoint_path: "experiments/rl/5tol_receptor_prepared/20260916_092550_402004/checkpoints/ppo_best.pt"
+
+tokenizer:
+  meta_path: "datasets/tokenizer/meta_chembl_db_aa_2_proto4.pkl"
+
+conditioning:
+  enabled: true
+  pocket_str_path: "conditioning/pocket_str.txt"
+  pocket_emb_path: "conditioning/pocket_emb.npy"
+  pocket_emb_aa_start: 2
+
+data:
+  # Igual que en RL: aporta los primeros tokens del ligando al prompt.
+  seed_smiles_csv: "datasets/raw/zinc250k/zinc_250k.csv"
+  seed_smiles_column: "smiles"
+
+generation:
+  num_ligands: 1000
+  batch_size: 64
+  seq_length: 156
+  top_k: 10
+  temperature: 0.9
+  max_attempt_multiplier: 10
+
+prompt:
+  initial_ligand_tokens: 7
+
+system:
+  device: "cuda:0"
+  dtype: "bfloat16"
+  seed: 42
+
+output:
+  csv_path: "experiments/inference/5tol_ligands.csv"

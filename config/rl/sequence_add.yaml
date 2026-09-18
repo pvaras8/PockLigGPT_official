@@ -22,8 +22,8 @@ seed: 42
 rl:
   batch_size: 64
   lr: 3e-5
-  prompt_batch_size: 256
-  num_rollouts: 256
+  prompt_batch_size: 8
+  num_rollouts: 8
   epochs: 30
   ppo_epochs: 4
   kl_coef: 0.005

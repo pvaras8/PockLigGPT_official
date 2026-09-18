@@ -2,7 +2,7 @@
 # MODEL
 # =========================
 model:
-  checkpoint_path: "checkpoints/ckpt_zink_chembl.pt"
+  checkpoint_path: "checkpoints/ckpt_zink_chembl_cross_sequence_add.pt"
 
 # =========================
 # DATA
@@ -51,9 +51,9 @@ prompt:
 # CONDITIONING
 # =========================
 conditioning:
-  enabled: false  # false para correr sin pocket (sin pocket_str ni embeddings)
+  enabled: true  # false para correr sin pocket (sin pocket_str ni embeddings)
   pocket_str_path: "conditioning/pocket_str.txt"
-  pocket_emb_path: "conditioning/pocket_emb.npy"
+  pocket_emb_path: "conditioning/p_bace_per_residue.npy"
   pocket_emb_aa_start: 2
 
 # =========================

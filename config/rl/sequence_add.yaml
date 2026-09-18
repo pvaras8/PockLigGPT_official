@@ -84,6 +84,6 @@ system:
 # OUTPUT
 # =========================
 output:
-  ppo_ckpt_path: "ppo_best.pt"
+  ppo_ckpt_path: "bace_ppo_best.pt"
   loss_history_file: "loss_history.csv"
   save_trajectories: true

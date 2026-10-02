@@ -4,7 +4,7 @@ import numpy as np
 from numpy import exp
 
 
-def sigmoid_pen_docking(x, min_x=-11.0, max_x=-5.0, min_sig_in=-6, max_sig_in=6):
+def sigmoid_pen_docking(x, min_x=-10.0, max_x=-4.0, min_sig_in=-6, max_sig_in=6):
     sig = lambda y: 1 / (1 + exp(-y))
     input_map = lambda y: (y - min_x) / (max_x - min_x) * (max_sig_in - min_sig_in) + min_sig_in
     return sig(input_map(x))
@@ -21,7 +21,7 @@ def combine_docking_only(d):
 
 
 def combine_docking_logP(docking, logp):
-    def docking_component(d, d_min=-11.0, d_max=-5.0, s_min=-6.0, s_max=6.0, power=1.3):
+    def docking_component(d, d_min=-10.0, d_max=-4.0, s_min=-6.0, s_max=6.0, power=1.3):
         z = (d - d_min) / (d_max - d_min) * (s_max - s_min) + s_min
         base = 1.0 - (1.0 / (1.0 + np.exp(-z)))
         return np.clip(base, 0.0, 1.0) ** power

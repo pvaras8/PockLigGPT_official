@@ -4,14 +4,6 @@ PockLigGPT is a molecular generation framework based on GPT architectures and re
 
 ---
 
-## 🌐 Online access
-
-👉 https://pockliggpt.streamlit.app
-
-Researchers and industry partners can submit target proteins (PDB) and request molecule generation or full computational studies.
-
----
-
 ## 🔗 Model Weights
 
 👉 https://huggingface.co/pablovp8/PockLigGPT

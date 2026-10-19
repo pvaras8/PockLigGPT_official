@@ -52,8 +52,8 @@ prompt:
 # =========================
 conditioning:
   enabled: true  # false para correr sin pocket (sin pocket_str ni embeddings)
-  pocket_str_path: "conditioning/pocket_str.txt"
-  pocket_emb_path: "conditioning/5AAN_Leu89_H10_prott5_embeddings.npy"
+  pocket_str_path: "conditioning/pocket_str_dyrk1a.txt"
+  pocket_emb_path: "conditioning/pocket_dyrk1a.npy"
   pocket_emb_aa_start: 2
 
 # =========================
